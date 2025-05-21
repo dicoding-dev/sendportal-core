@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Sendportal\Base\Adapters;
 
 use Aws\Result;
-use Aws\Ses\SesClient;
+use Aws\SesV2\SesV2Client;
 use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Support\Arr;
 use Sendportal\Base\Services\Messages\MessageTrackingOptions;
@@ -15,7 +15,7 @@ class SesMailAdapter extends BaseMailAdapter
 {
     use ThrottlesSending;
 
-    /** @var SesClient */
+    /** @var SesV2Client */
     protected $client;
 
     /**
@@ -27,22 +27,25 @@ class SesMailAdapter extends BaseMailAdapter
 
         $result = $this->throttleSending(function () use ($fromEmail, $fromName, $toEmail, $subject, $trackingOptions, $content) {
             return $this->resolveClient()->sendEmail([
-                'Source' => $fromName . ' <' . $fromEmail . '>',
+                'FromEmailAddress' => $fromName . ' <' . $fromEmail . '>',
 
                 'Destination' => [
                     'ToAddresses' => [$toEmail],
                 ],
 
-                'Message' => [
-                    'Subject' => [
-                        'Data' => $subject,
-                    ],
-                    'Body' => [
-                        'Html' => [
-                            'Data' => $content,
+                'Content' => [
+                    'Simple' => [
+                        'Subject' => [
+                            'Data' => $subject,
+                        ],
+                        'Body' => [
+                            'Html' => [
+                                'Data' => $content,
+                            ],
                         ],
                     ],
                 ],
+
                 'ConfigurationSetName' => Arr::get($this->config, 'configuration_set_name'),
             ]);
         });
@@ -53,13 +56,13 @@ class SesMailAdapter extends BaseMailAdapter
     /**
      * @throws BindingResolutionException
      */
-    protected function resolveClient(): SesClient
+    protected function resolveClient(): SesV2Client
     {
         if ($this->client) {
             return $this->client;
         }
 
-        $this->client = app()->make('aws')->createClient('ses', [
+        $this->client = app()->make('aws')->createClient('sesv2', [
             'region' => Arr::get($this->config, 'region'),
             'credentials' => [
                 'key' => Arr::get($this->config, 'key'),
@@ -76,12 +79,12 @@ class SesMailAdapter extends BaseMailAdapter
     }
 
     /**
-     * https://docs.aws.amazon.com/ses/latest/APIReference/API_GetSendQuota.html
+     * https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_GetAccount.html
      *
      * @throws BindingResolutionException
      */
     public function getSendQuota(): array
     {
-        return $this->resolveClient()->getSendQuota()->toArray();
+        return $this->resolveClient()->getAccount()->get('SendQuota')->toArray();
     }
 }
