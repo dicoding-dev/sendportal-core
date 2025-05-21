@@ -26,6 +26,20 @@ class SesMailAdapter extends BaseMailAdapter
         // TODO(david): It isn't clear whether it is possible to set per-message tracking for SES.
 
         $result = $this->throttleSending(function () use ($fromEmail, $fromName, $toEmail, $subject, $trackingOptions, $content) {
+            $headers = [];
+
+            $listUnsubscribe = collect(config('sendportal.list_unsubscribe'))
+                ->filter()
+                ->map(fn($value, $key) => $key === 'email' ? "<mailto: $value>" : "<$value>")
+                ->implode(',');
+
+            if ($listUnsubscribe) {
+                $headers[] = [
+                    'Name' => 'List-Unsubscribe',
+                    'Value' => $listUnsubscribe,
+                ];
+            }
+
             return $this->resolveClient()->sendEmail([
                 'FromEmailAddress' => $fromName . ' <' . $fromEmail . '>',
 
@@ -43,6 +57,7 @@ class SesMailAdapter extends BaseMailAdapter
                                 'Data' => $content,
                             ],
                         ],
+                        'Headers' => $headers,
                     ],
                 ],
 
