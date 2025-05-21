@@ -2,6 +2,8 @@
 
 namespace Sendportal\Base\Repositories;
 
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
 use Sendportal\Base\Models\Tag;
 
 class TagTenantRepository extends BaseTenantRepository
@@ -46,5 +48,23 @@ class TagTenantRepository extends BaseTenantRepository
         $instance->campaigns()->detach();
 
         return $instance->delete();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function applyFilters(Builder $instance, array $filters = []): void
+    {
+        $this->applyNameFilter($instance, $filters);
+    }
+
+    /**
+     * Filter by name or email.
+     */
+    protected function applyNameFilter(Builder $instance, array $filters): void
+    {
+        if ($name = Arr::get($filters, 'name')) {
+            $instance->where($instance->getModel()->getTable() . '.name', $name);
+        }
     }
 }

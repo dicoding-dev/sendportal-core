@@ -39,7 +39,9 @@ class TagsController extends Controller
         $workspaceId = Sendportal::currentWorkspaceId();
 
         return TagResource::collection(
-            $this->tags->paginate($workspaceId, 'name', [], request()->get('per_page', 25))
+            $this->tags->paginate($workspaceId, 'name', [], request()->get('per_page', 25), [
+                'name' => request()->get('name')
+            ])
         );
     }
 
