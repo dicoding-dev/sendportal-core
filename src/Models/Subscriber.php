@@ -62,6 +62,7 @@ class Subscriber extends BaseModel
     {
         return [
             'unsubscribed_at' => 'datetime',
+            'meta' => 'array',
         ];
     }
 
