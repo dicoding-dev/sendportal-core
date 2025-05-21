@@ -78,6 +78,11 @@ class SmtpAdapter extends BaseMailAdapter
             ->subject($subject)
             ->html($content);
 
+        $listUnsubscribe = $this->getListUnsubscribe();
+        if ($listUnsubscribe) {
+            $msg->getHeaders()->addHeader('List-Unsubscribe', $listUnsubscribe);
+        }
+
         return $msg;
     }
 
