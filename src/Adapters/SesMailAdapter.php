@@ -27,11 +27,7 @@ class SesMailAdapter extends BaseMailAdapter
 
         $result = $this->throttleSending(function () use ($fromEmail, $fromName, $toEmail, $subject, $trackingOptions, $content) {
             $headers = [];
-
-            $listUnsubscribe = collect(config('sendportal.list_unsubscribe'))
-                ->filter()
-                ->map(fn($value, $key) => $key === 'email' ? "<mailto: $value>" : "<$value>")
-                ->implode(',');
+            $listUnsubscribe = $this->getListUnsubscribe();
 
             if ($listUnsubscribe) {
                 $headers[] = [
