@@ -7,6 +7,7 @@ namespace Sendportal\Base\Services\Content;
 use Exception;
 use Sendportal\Base\Models\Campaign;
 use Sendportal\Base\Models\Message;
+use Sendportal\Base\Models\Subscriber;
 use Sendportal\Base\Repositories\Campaigns\CampaignTenantRepositoryInterface;
 use Sendportal\Base\Traits\NormalizeTags;
 use Sendportal\Pro\Repositories\AutomationScheduleRepository;
@@ -137,6 +138,10 @@ class MergeContentService
             $content = str_ireplace('{{' . $key . '}}', $replace, $content);
         }
 
+        if (optional($message->subscriber)->meta ?? false) {
+            $content = $this->resolveMergeSubscriberMetaService($message->subscriber)->handle($content);
+        }
+
         return $content;
     }
 
@@ -181,5 +186,10 @@ class MergeContentService
     protected function inlineStyles(string $content): string
     {
         return $this->cssProcessor->convert($content);
+    }
+
+    private function resolveMergeSubscriberMetaService(Subscriber $subscriber): MergeSubscriberMetaService
+    {
+        return new MergeSubscriberMetaService($subscriber);
     }
 }

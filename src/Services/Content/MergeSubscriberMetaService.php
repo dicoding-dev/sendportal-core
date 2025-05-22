@@ -32,7 +32,7 @@ class MergeSubscriberMetaService
 
     protected function compileTags(string $content): string
     {
-        foreach ($this->tags as $tag) {
+        foreach (array_keys($this->tags) as $tag) {
             $content = $this->normalizeTags($content, $tag);
         }
 
@@ -42,7 +42,7 @@ class MergeSubscriberMetaService
     protected function mergeMetaTagsValue(string $content): string
     {
         foreach ($this->tags as $tag => $value) {
-            $content = str_ireplace('{{' . $tag . '}}', $value, $content);
+            $content = str_ireplace('{{' . $tag . '}}', (string) $value, $content);
         }
 
         return $content;
