@@ -18,12 +18,4 @@ abstract class BaseMailAdapter implements MailAdapterInterface
     {
         $this->config = $config;
     }
-
-    protected function getListUnsubscribe(): string
-    {
-        return collect(config('sendportal.list_unsubscribe'))
-            ->filter()
-            ->map(fn($value, $key) => $key === 'email' ? "<mailto: $value>" : "<$value>")
-            ->implode(',');
-    }
 }

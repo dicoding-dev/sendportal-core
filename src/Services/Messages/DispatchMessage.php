@@ -101,7 +101,8 @@ class DispatchMessage
             ->setFromEmail($message->from_email)
             ->setFromName($message->from_name)
             ->setSubject($message->subject)
-            ->setTrackingOptions($trackingOptions);
+            ->setTrackingOptions($trackingOptions)
+            ->addHeader('List-Unsubscribe', $this->getListUnsubscribe());
 
         $messageId = $this->relayMessage->handle($mergedContent, $messageOptions, $emailService);
 
@@ -140,5 +141,13 @@ class DispatchMessage
         }
 
         return $campaign->status_id !== CampaignStatus::STATUS_CANCELLED;
+    }
+
+    protected function getListUnsubscribe(): string
+    {
+        return collect(config('sendportal.list_unsubscribe'))
+            ->filter()
+            ->map(fn($value, $key) => $key === 'email' ? "<mailto: $value>" : "<$value>")
+            ->implode(',');
     }
 }

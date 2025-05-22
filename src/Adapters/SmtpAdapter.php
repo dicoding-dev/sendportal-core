@@ -21,10 +21,10 @@ class SmtpAdapter extends BaseMailAdapter
     /** @var EsmtpTransport */
     protected $transport;
 
-    public function send(string $fromEmail, string $fromName, string $toEmail, string $subject, MessageTrackingOptions $trackingOptions, string $content): string
+    public function send(string $fromEmail, string $fromName, string $toEmail, string $subject, MessageTrackingOptions $trackingOptions, string $content, array $headers): string
     {
         try {
-            $result = $this->resolveClient()->send($this->resolveMessage($subject, $content, $fromEmail, $fromName, $toEmail));
+            $result = $this->resolveClient()->send($this->resolveMessage($subject, $content, $fromEmail, $fromName, $toEmail, $headers));
         } catch (TransportException $e) {
             return $this->resolveMessageId(0);
         }
@@ -70,7 +70,7 @@ class SmtpAdapter extends BaseMailAdapter
         return $this->transport;
     }
 
-    protected function resolveMessage(string $subject, string $content, string $fromEmail, string $fromName, string $toEmail): Email
+    protected function resolveMessage(string $subject, string $content, string $fromEmail, string $fromName, string $toEmail, array $headers): Email
     {
         $msg = (new Email())
             ->from(new Address($fromEmail, $fromName))
@@ -78,9 +78,8 @@ class SmtpAdapter extends BaseMailAdapter
             ->subject($subject)
             ->html($content);
 
-        $listUnsubscribe = $this->getListUnsubscribe();
-        if ($listUnsubscribe) {
-            $msg->getHeaders()->addHeader('List-Unsubscribe', $listUnsubscribe);
+        foreach ($headers as $name => $value) {
+            $msg->getHeaders()->addHeader($name, $value);
         }
 
         return $msg;
