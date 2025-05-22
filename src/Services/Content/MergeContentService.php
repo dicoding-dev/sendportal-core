@@ -131,7 +131,8 @@ class MergeContentService
         $tags = [
             'email' => $message->recipient_email,
             'first_name' => optional($message->subscriber)->first_name ?? '',
-            'last_name' => optional($message->subscriber)->last_name ?? ''
+            'last_name' => optional($message->subscriber)->last_name ?? '',
+            'name' => optional($message->subscriber)->first_name ?? '', // aliased to first name
         ];
 
         foreach ($tags as $key => $replace) {
