@@ -16,7 +16,7 @@ class PostalAdapter extends BaseMailAdapter
      * @throws TypeException
      * @throws \Throwable
      */
-    public function send(string $fromEmail, string $fromName, string $toEmail, string $subject, MessageTrackingOptions $trackingOptions, string $content): string
+    public function send(string $fromEmail, string $fromName, string $toEmail, string $subject, MessageTrackingOptions $trackingOptions, string $content, array $headers): string
     {
         $client = new Client('https://' . Arr::get($this->config, 'postal_host'), Arr::get($this->config, 'key'));
 
