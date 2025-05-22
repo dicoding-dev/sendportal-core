@@ -10,8 +10,10 @@ use Sendportal\Base\Models\Campaign;
 use Sendportal\Base\Models\CampaignStatus;
 use Sendportal\Base\Models\EmailService;
 use Sendportal\Base\Models\Message;
+use Sendportal\Base\Models\Subscriber;
 use Sendportal\Base\Services\Content\MergeContentService;
 use Sendportal\Base\Services\Content\MergeSubjectService;
+use Sendportal\Base\Services\Content\MergeSubscriberMetaService;
 
 class DispatchMessage
 {
@@ -102,7 +104,7 @@ class DispatchMessage
             ->setFromName($message->from_name)
             ->setSubject($message->subject)
             ->setTrackingOptions($trackingOptions)
-            ->addHeader('List-Unsubscribe', $this->getListUnsubscribe());
+            ->addHeader('List-Unsubscribe', $this->getListUnsubscribe($message->subscriber));
 
         $messageId = $this->relayMessage->handle($mergedContent, $messageOptions, $emailService);
 
@@ -143,11 +145,22 @@ class DispatchMessage
         return $campaign->status_id !== CampaignStatus::STATUS_CANCELLED;
     }
 
-    protected function getListUnsubscribe(): string
+    protected function getListUnsubscribe(Subscriber $subscriber): string
     {
         return collect(config('sendportal.list_unsubscribe'))
             ->filter()
-            ->map(fn($value, $key) => $key === 'email' ? "<mailto: $value>" : "<$value>")
+            ->map(function ($value, $key) use ($subscriber) {
+                $mergedValue = $this->resolveMergeSubscriberMetaService($subscriber)->handle($value);
+
+                return $key === 'email'
+                    ? "<mailto: $mergedValue>"
+                    : "<$mergedValue>";
+            })
             ->implode(',');
+    }
+
+    private function resolveMergeSubscriberMetaService(Subscriber $subscriber): MergeSubscriberMetaService
+    {
+        return new MergeSubscriberMetaService($subscriber);
     }
 }
