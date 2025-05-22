@@ -103,6 +103,7 @@ class MergeContentService
         $content = $this->mergeSubscriberTags($content, $message);
         $content = $this->mergeUnsubscribeLink($content, $message);
         $content = $this->mergeWebviewLink($content, $message);
+        $content = $this->mergeCustomTags($content, $message);
 
         return $content;
     }
@@ -161,6 +162,20 @@ class MergeContentService
     protected function generateWebviewLink(Message $message): string
     {
         return route('sendportal.webview.show', $message->hash);
+    }
+
+    protected function mergeCustomTags(string $content, Message $message): string
+    {
+        $tags = [
+            'current_year' => date('Y'),
+        ];
+
+        foreach ($tags as $key => $replace) {
+            $content = $this->normalizeTags($content, $key);
+            $content = str_ireplace('{{' . $key . '}}', $replace, $content);
+        }
+
+        return $content;
     }
 
     protected function inlineStyles(string $content): string
