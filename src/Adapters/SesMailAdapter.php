@@ -86,6 +86,6 @@ class SesMailAdapter extends BaseMailAdapter
      */
     public function getSendQuota(): array
     {
-        return $this->resolveClient()->getAccount()->get('SendQuota')->toArray();
+        return $this->resolveClient()->getAccount()->get('SendQuota');
     }
 }
