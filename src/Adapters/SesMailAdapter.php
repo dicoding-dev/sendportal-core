@@ -25,31 +25,34 @@ class SesMailAdapter extends BaseMailAdapter
     {
         // TODO(david): It isn't clear whether it is possible to set per-message tracking for SES.
 
-        $result = $this->throttleSending(function () use ($fromEmail, $fromName, $toEmail, $subject, $trackingOptions, $content) {
-            return $this->resolveClient()->sendEmail([
-                'FromEmailAddress' => $fromName . ' <' . $fromEmail . '>',
+        $headers = array_map(fn ($key) => [
+            'Name' => $key,
+            'Value' => $headers[$key],
+        ], array_keys($headers));
 
-                'Destination' => [
-                    'ToAddresses' => [$toEmail],
-                ],
+        $result = $this->throttleSending(fn() => $this->resolveClient()->sendEmail([
+            'FromEmailAddress' => $fromName . ' <' . $fromEmail . '>',
 
-                'Content' => [
-                    'Simple' => [
-                        'Subject' => [
-                            'Data' => $subject,
-                        ],
-                        'Body' => [
-                            'Html' => [
-                                'Data' => $content,
-                            ],
-                        ],
-                        'Headers' => $headers,
+            'Destination' => [
+                'ToAddresses' => [$toEmail],
+            ],
+
+            'Content' => [
+                'Simple' => [
+                    'Subject' => [
+                        'Data' => $subject,
                     ],
+                    'Body' => [
+                        'Html' => [
+                            'Data' => $content,
+                        ],
+                    ],
+                    'Headers' => $headers,
                 ],
+            ],
 
-                'ConfigurationSetName' => Arr::get($this->config, 'configuration_set_name'),
-            ]);
-        });
+            'ConfigurationSetName' => Arr::get($this->config, 'configuration_set_name'),
+        ]));
 
         return $this->resolveMessageId($result);
     }
