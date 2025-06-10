@@ -104,7 +104,8 @@ class DispatchMessage
             ->setFromName($message->from_name)
             ->setSubject($message->subject)
             ->setTrackingOptions($trackingOptions)
-            ->addHeader('List-Unsubscribe', $this->getListUnsubscribe($message->subscriber));
+            ->addHeader('List-Unsubscribe', $this->getListUnsubscribe($message->subscriber))
+            ->addHeader('X-SendPortal-Campaign', $message->source->name);
 
         $messageId = $this->relayMessage->handle($mergedContent, $messageOptions, $emailService);
 
