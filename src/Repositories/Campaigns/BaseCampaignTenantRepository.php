@@ -85,6 +85,7 @@ abstract class BaseCampaignTenantRepository extends BaseTenantRepository impleme
     protected function applyFilters(Builder $instance, array $filters = []): void
     {
         $this->applySentFilter($instance, $filters);
+        $this->applyNameFilter($instance, $filters);
     }
 
     /**
@@ -107,6 +108,16 @@ abstract class BaseCampaignTenantRepository extends BaseTenantRepository impleme
             ];
 
             $instance->whereIn('status_id', $sentStatuses);
+        }
+    }
+
+    /**
+     * Filter by campaign name.
+     */
+    protected function applyNameFilter(Builder $instance, array $filters = []): void
+    {
+        if (Arr::get($filters, 'name')) {
+            $instance->where($instance->getModel()->getTable() . '.name', Arr::get($filters, 'name'));
         }
     }
 }

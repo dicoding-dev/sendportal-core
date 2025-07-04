@@ -30,7 +30,16 @@ class CampaignsController extends Controller
     {
         $workspaceId = Sendportal::currentWorkspaceId();
 
-        return CampaignResource::collection($this->campaigns->paginate($workspaceId, 'id', ['tags']));
+        return CampaignResource::collection(
+            $this->campaigns->paginate(
+                $workspaceId,
+                'id',
+                ['tags'],
+                parameters: [
+                    'name' => request('name'),
+                ]
+            )
+        );
     }
 
     /**
