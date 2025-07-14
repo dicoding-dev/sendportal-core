@@ -9,6 +9,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Sendportal\Base\Facades\Sendportal;
 use Sendportal\Base\Http\Controllers\Controller;
+use Sendportal\Base\Http\Requests\Api\SubscribersSyncRequest;
 use Sendportal\Base\Http\Requests\Api\SubscriberStoreRequest;
 use Sendportal\Base\Http\Requests\Api\SubscriberUpdateRequest;
 use Sendportal\Base\Http\Resources\Subscriber as SubscriberResource;
@@ -85,5 +86,17 @@ class SubscribersController extends Controller
         $this->apiService->delete($workspaceId, $this->subscribers->find($workspaceId, $id));
 
         return response(null, 204);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function sync(SubscribersSyncRequest $request): AnonymousResourceCollection
+    {
+        $workspaceId = Sendportal::currentWorkspaceId();
+        $subscribers = collect($request->validated('subscribers'))
+            ->map(fn($subscriber) => $this->apiService->storeOrUpdate($workspaceId, collect($subscriber)));
+
+        return SubscriberResource::collection($subscribers);
     }
 }
