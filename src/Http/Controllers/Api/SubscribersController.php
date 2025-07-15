@@ -9,6 +9,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\LazyCollection;
 use Ramsey\Uuid\Uuid;
 use Sendportal\Base\Facades\Sendportal;
 use Sendportal\Base\Http\Controllers\Controller;
@@ -98,101 +99,120 @@ class SubscribersController extends Controller
     public function sync(SubscribersSyncRequest $request): AnonymousResourceCollection
     {
         $workspaceId = Sendportal::currentWorkspaceId();
-        $requestedSubscribers = collect($request->validated('subscribers'));
+
+        // Convert to LazyCollection to process items one at a time
+        $requestedSubscribers = LazyCollection::make($request->validated('subscribers'));
+
+        // Get all emails first to fetch existing subscribers
+        $emails = $requestedSubscribers->pluck('email')->all();
         $existingSubscribers = DB::table('sendportal_subscribers')
-            ->whereIn('email', $requestedSubscribers->pluck('email'))
+            ->whereIn('email', $emails)
             ->get(['id', 'email']);
 
-        $toBeUpdatedSubscribers = collect([]);
-        $toBeInsertedSubscribers = collect([]);
+        // Create index for faster lookups
+        $existingSubscribersIndex = $existingSubscribers->keyBy('email');
 
-        foreach ($requestedSubscribers as $subscriber) {
-            $existingSubscriber = $existingSubscribers->firstWhere('email', $subscriber['email']);
-            if ($existingSubscriber && isset($existingSubscriber->id)) {
-                $toBeUpdatedSubscribers->push([
-                    'id' => $existingSubscriber->id,
-                    'workspace_id' => $workspaceId,
-                    'email' => $subscriber['email'],
-                    'first_name' => $subscriber['first_name'] ?? '',
-                    'last_name' => $subscriber['last_name'] ?? '',
-                    'meta' => json_encode($subscriber['meta'] ?? ''),
-                ]);
-            } else {
-                $toBeInsertedSubscribers->push([
-                    'workspace_id' => $workspaceId,
-                    'email' => $subscriber['email'],
-                    'first_name' => $subscriber['first_name'] ?? '',
-                    'last_name' => $subscriber['last_name'] ?? '',
-                    'meta' => json_encode($subscriber['meta'] ?? ''),
-                    'hash' => Uuid::uuid4()->toString(),
-                ]);
+        // Process subscribers in chunks to reduce memory usage
+        $requestedSubscribers->chunk(100)->each(function ($chunk) use ($workspaceId, $existingSubscribersIndex) {
+            $toBeUpdated = [];
+            $toBeInserted = [];
+
+            foreach ($chunk as $subscriber) {
+                $existingSubscriber = $existingSubscribersIndex->get($subscriber['email']);
+
+                if ($existingSubscriber && isset($existingSubscriber->id)) {
+                    $toBeUpdated[] = [
+                        'id' => $existingSubscriber->id,
+                        'workspace_id' => $workspaceId,
+                        'email' => $subscriber['email'],
+                        'first_name' => $subscriber['first_name'] ?? '',
+                        'last_name' => $subscriber['last_name'] ?? '',
+                        'meta' => json_encode($subscriber['meta'] ?? ''),
+                    ];
+                } else {
+                    $toBeInserted[] = [
+                        'workspace_id' => $workspaceId,
+                        'email' => $subscriber['email'],
+                        'first_name' => $subscriber['first_name'] ?? '',
+                        'last_name' => $subscriber['last_name'] ?? '',
+                        'meta' => json_encode($subscriber['meta'] ?? ''),
+                        'hash' => Uuid::uuid4()->toString(),
+                    ];
+                }
             }
-        }
 
-        $toBeInsertedSubscribers->chunk(100)
-            ->each(function ($chunk) {
-                DB::table('sendportal_subscribers')->insert($chunk->toArray());
-            });
+            // Insert new subscribers
+            if (!empty($toBeInserted)) {
+                DB::table('sendportal_subscribers')->insert($toBeInserted);
+            }
 
-        $toBeUpdatedSubscribers->chunk(100)
-            ->each(function (Collection $chunk) use ($workspaceId) {
-                if ($chunk->isEmpty()) {
-                    return;
-                }
-
-                $ids = $chunk->pluck('id')->toArray();
-                $connection = DB::connection();
-
-                $cases = [
-                    'email' => '',
-                    'first_name' => '',
-                    'last_name' => '',
-                    'meta' => '',
-                ];
-
-                foreach ($chunk as $item) {
-                    $id = $connection->escape($item['id']);
-                    $email = $connection->escape($item['email']);
-
-                    $cases['email'] .= "WHEN {$id} THEN {$email} ";
-
-                    if (empty($item['first_name'])) {
-                        $cases['first_name'] .= "WHEN {$id} THEN NULL ";
-                    } else {
-                        $firstName = $connection->escape($item['first_name']);
-                        $cases['first_name'] .= "WHEN {$id} THEN {$firstName} ";
-                    }
-
-                    if (empty($item['last_name'])) {
-                        $cases['last_name'] .= "WHEN {$id} THEN NULL ";
-                    } else {
-                        $lastName = $connection->escape($item['last_name']);
-                        $cases['last_name'] .= "WHEN {$id} THEN {$lastName} ";
-                    }
-
-                    $meta = $connection->escape($item['meta']);
-                    $cases['meta'] .= "WHEN {$id} THEN {$meta} ";
-                }
-
-                $idsList = implode(',', array_map(function($id) use ($connection) {
-                    return $connection->escape($id);
-                }, $ids));
-
-                $query = "UPDATE sendportal_subscribers SET ";
-                $query .= "workspace_id = {$workspaceId}, ";
-                $query .= "email = CASE id {$cases['email']} END, ";
-                $query .= "first_name = CASE id {$cases['first_name']} END, ";
-                $query .= "last_name = CASE id {$cases['last_name']} END, ";
-                $query .= "meta = CASE id {$cases['meta']} END ";
-                $query .= "WHERE id IN ({$idsList})";
-
-                DB::statement($query);
-            });
+            // Update existing subscribers
+            $this->updateSubscribers(collect($toBeUpdated), $workspaceId);
+        });
 
         // Fetch all subscribers that were just inserted or updated
-        $emails = $requestedSubscribers->pluck('email')->toArray();
-        $subscribers = Subscriber::whereIn('email', $emails)->orderBy('id')->get();
+        $subscribers = DB::table('sendportal_subscribers')
+            ->whereIn('email', $emails)
+            ->orderBy('id')
+            ->get(['id', 'email', 'first_name', 'last_name']);
 
         return SubscriberResource::collection($subscribers);
+    }
+
+    /**
+     * Update subscribers in the database
+     */
+    private function updateSubscribers(Collection $subscribers, int $workspaceId): void
+    {
+        if ($subscribers->isEmpty()) {
+            return;
+        }
+
+        // No need to chunk as this method is called with data already chunked in the sync method (line 116)
+        $ids = $subscribers->pluck('id')->toArray();
+        $connection = DB::connection();
+
+        $cases = [
+            'email' => '',
+            'first_name' => '',
+            'last_name' => '',
+            'meta' => '',
+        ];
+
+        foreach ($subscribers as $item) {
+            $id = $connection->escape($item['id']);
+            $email = $connection->escape($item['email']);
+
+            $cases['email'] .= "WHEN {$id} THEN {$email} ";
+
+            if (empty($item['first_name'])) {
+                $cases['first_name'] .= "WHEN {$id} THEN NULL ";
+            } else {
+                $firstName = $connection->escape($item['first_name']);
+                $cases['first_name'] .= "WHEN {$id} THEN {$firstName} ";
+            }
+
+            if (empty($item['last_name'])) {
+                $cases['last_name'] .= "WHEN {$id} THEN NULL ";
+            } else {
+                $lastName = $connection->escape($item['last_name']);
+                $cases['last_name'] .= "WHEN {$id} THEN {$lastName} ";
+            }
+
+            $meta = $connection->escape($item['meta']);
+            $cases['meta'] .= "WHEN {$id} THEN {$meta} ";
+        }
+
+        $idsList = implode(',', array_map(static fn ($id) => $connection->escape($id), $ids));
+
+        $query = "UPDATE sendportal_subscribers SET ";
+        $query .= "workspace_id = {$workspaceId}, ";
+        $query .= "email = CASE id {$cases['email']} END, ";
+        $query .= "first_name = CASE id {$cases['first_name']} END, ";
+        $query .= "last_name = CASE id {$cases['last_name']} END, ";
+        $query .= "meta = CASE id {$cases['meta']} END ";
+        $query .= "WHERE id IN ({$idsList})";
+
+        DB::statement($query);
     }
 }
