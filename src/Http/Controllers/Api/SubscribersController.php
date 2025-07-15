@@ -9,6 +9,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Ramsey\Uuid\Uuid;
 use Sendportal\Base\Facades\Sendportal;
 use Sendportal\Base\Http\Controllers\Controller;
 use Sendportal\Base\Http\Requests\Api\SubscribersSyncRequest;
@@ -98,7 +99,7 @@ class SubscribersController extends Controller
     {
         $workspaceId = Sendportal::currentWorkspaceId();
         $requestedSubscribers = collect($request->validated('subscribers'));
-        $existingSubscribers = Subscriber::query()
+        $existingSubscribers = DB::table('sendportal_subscribers')
             ->whereIn('email', $requestedSubscribers->pluck('email'))
             ->get(['id', 'email']);
 
@@ -123,6 +124,7 @@ class SubscribersController extends Controller
                     'first_name' => $subscriber['first_name'] ?? '',
                     'last_name' => $subscriber['last_name'] ?? '',
                     'meta' => json_encode($subscriber['meta'] ?? ''),
+                    'hash' => Uuid::uuid4()->toString(),
                 ]);
             }
         }
