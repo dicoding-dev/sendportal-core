@@ -20,11 +20,11 @@ class Subscriber extends JsonResource
             'first_name' => $this->first_name,
             'last_name' => $this->last_name,
             'email' => $this->email,
-            'tags' => TagResource::collection($this->whenLoaded('tags')),
-            'meta' => $this->meta,
-            'unsubscribed_at' => $this->unsubscribed_at ? $this->unsubscribed_at->toDateTimeString() : null,
-            'created_at' => $this->created_at->toDateTimeString(),
-            'updated_at' => $this->updated_at->toDateTimeString()
+//            'tags' => TagResource::collection($this->whenLoaded('tags')),
+//            'meta' => $this->meta,
+//            'unsubscribed_at' => $this->unsubscribed_at ? $this->unsubscribed_at->toDateTimeString() : null,
+//            'created_at' => $this->created_at->toDateTimeString(),
+//            'updated_at' => $this->updated_at->toDateTimeString()
         ];
     }
 }
