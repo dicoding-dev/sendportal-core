@@ -149,6 +149,8 @@ class SubscribersController extends Controller
             $this->updateSubscribers(collect($toBeUpdated), $workspaceId);
         });
 
+        unset($requestedSubscribers, $existingSubscribers, $existingSubscribersIndex);
+
         // Fetch all subscribers that were just inserted or updated
         $subscribers = DB::table('sendportal_subscribers')
             ->whereIn('email', $emails)
