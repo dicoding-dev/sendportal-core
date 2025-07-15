@@ -17,7 +17,6 @@ use Sendportal\Base\Http\Requests\Api\SubscribersSyncRequest;
 use Sendportal\Base\Http\Requests\Api\SubscriberStoreRequest;
 use Sendportal\Base\Http\Requests\Api\SubscriberUpdateRequest;
 use Sendportal\Base\Http\Resources\Subscriber as SubscriberResource;
-use Sendportal\Base\Models\Subscriber;
 use Sendportal\Base\Repositories\Subscribers\SubscriberTenantRepositoryInterface;
 use Sendportal\Base\Services\Subscribers\ApiSubscriberService;
 
@@ -113,7 +112,7 @@ class SubscribersController extends Controller
         $existingSubscribersIndex = $existingSubscribers->keyBy('email');
 
         // Process subscribers in chunks to reduce memory usage
-        $requestedSubscribers->chunk(100)->each(function ($chunk) use ($workspaceId, $existingSubscribersIndex) {
+        $requestedSubscribers->chunk(50)->each(function ($chunk) use ($workspaceId, $existingSubscribersIndex) {
             $toBeUpdated = [];
             $toBeInserted = [];
 
