@@ -173,10 +173,12 @@ class SubscribersController extends Controller
             // Insert new subscribers
             if (!empty($toBeInserted)) {
                 DB::table('sendportal_subscribers')->insert($toBeInserted);
+                unset($toBeInserted);
             }
 
             // Update existing subscribers
             $this->updateSubscribers(collect($toBeUpdated), $workspaceId);
+            unset($toBeUpdated);
             $this->log('chunk_'.$key.'_finish');
         });
 
