@@ -9,6 +9,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\LazyCollection;
 use Ramsey\Uuid\Uuid;
 use Sendportal\Base\Facades\Sendportal;
@@ -27,6 +28,9 @@ class SubscribersController extends Controller
 
     /** @var ApiSubscriberService */
     protected $apiService;
+    private string $uniqid;
+    private float $startTime;
+    private float $startMemory;
 
     public function __construct(
         SubscriberTenantRepositoryInterface $subscribers,
@@ -92,15 +96,34 @@ class SubscribersController extends Controller
         return response(null, 204);
     }
 
+    private function log(string $step): void
+    {
+        Log::debug('sync_subs', [
+            'id' => $this->uniqid,
+            'step' => $step,
+            'time' => round((hrtime(true) - $this->startTime) / 1e9, 2),
+            'memory' => round(memory_get_usage(true) / 1024 / 1024, 2),
+            'memory_diff' => round((memory_get_usage(true) - $this->startMemory) / 1024 / 1024, 2),
+            'peak' => round(memory_get_peak_usage(true) / 1024 / 1024, 2)
+        ]);
+    }
+
     /**
      * @throws Exception
      */
     public function sync(SubscribersSyncRequest $request): AnonymousResourceCollection
     {
+        $this->uniqid = Uuid::uuid4()->toString();
+        $this->startTime = hrtime(true);
+        $this->startMemory = memory_get_usage(true);
+
+        $this->log('start');
         $workspaceId = Sendportal::currentWorkspaceId();
 
         // Convert to LazyCollection to process items one at a time
         $requestedSubscribers = LazyCollection::make($request->validated('subscribers'));
+
+        $this->log('lazy_collection');
 
         // Get all emails first to fetch existing subscribers
         $emails = $requestedSubscribers->pluck('email')->all();
@@ -108,11 +131,16 @@ class SubscribersController extends Controller
             ->whereIn('email', $emails)
             ->get(['id', 'email']);
 
+        $this->log('query_existing');
+
         // Create index for faster lookups
         $existingSubscribersIndex = $existingSubscribers->keyBy('email');
 
+        $this->log('index_email');
+
         // Process subscribers in chunks to reduce memory usage
-        $requestedSubscribers->chunk(50)->each(function ($chunk) use ($workspaceId, $existingSubscribersIndex) {
+        $requestedSubscribers->chunk(50)->each(function ($chunk, $key) use ($workspaceId, $existingSubscribersIndex) {
+            $this->log('chunk_'.$key.'_start');
             $toBeUpdated = [];
             $toBeInserted = [];
 
@@ -140,6 +168,8 @@ class SubscribersController extends Controller
                 }
             }
 
+            $this->log('chunk_'.$key.'_filter');
+
             // Insert new subscribers
             if (!empty($toBeInserted)) {
                 DB::table('sendportal_subscribers')->insert($toBeInserted);
@@ -147,15 +177,20 @@ class SubscribersController extends Controller
 
             // Update existing subscribers
             $this->updateSubscribers(collect($toBeUpdated), $workspaceId);
+            $this->log('chunk_'.$key.'_finish');
         });
 
         unset($requestedSubscribers, $existingSubscribers, $existingSubscribersIndex);
+
+        $this->log('before_end');
 
         // Fetch all subscribers that were just inserted or updated
         $subscribers = DB::table('sendportal_subscribers')
             ->whereIn('email', $emails)
             ->orderBy('id')
             ->get(['id', 'email', 'first_name', 'last_name']);
+
+        $this->log('end');
 
         return SubscriberResource::collection($subscribers);
     }
