@@ -7,6 +7,7 @@ namespace Sendportal\Base\Services\Tags;
 use Exception;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Sendportal\Base\Models\Tag;
 use Sendportal\Base\Repositories\TagTenantRepository;
 
 class ApiTagSubscriberService
@@ -26,16 +27,19 @@ class ApiTagSubscriberService
      */
     public function store(int $workspaceId, int $tagId, Collection $subscriberIds): Collection
     {
+        /** @var Tag $tag */
         $tag = $this->tags->find($workspaceId, $tagId);
 
-        /** @var Collection $existingSubscribers */
-        $existingSubscribers = $tag->subscribers()->pluck('sendportal_subscribers.id')->toBase();
+        $existingSubscribers = $tag->subscribers()
+            ->whereIn('subscriber_id', $subscriberIds)
+            ->pluck('subscriber_id')
+            ->toBase();
 
         $subscribersToStore = $subscriberIds->diff($existingSubscribers);
 
         $tag->subscribers()->attach($subscribersToStore);
 
-        return $tag->subscribers->toBase();
+        return $tag->subscribers()->whereIn('subscriber_id', $subscriberIds)->get()->toBase();
     }
 
     /**
