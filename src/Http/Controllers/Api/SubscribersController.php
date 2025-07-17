@@ -136,6 +136,8 @@ class SubscribersController extends Controller
                         'last_name' => $subscriber['last_name'] ?? '',
                         'meta' => json_encode($subscriber['meta'] ?? ''),
                         'hash' => Uuid::uuid4()->toString(),
+                        'created_at' => now(),
+                        'updated_at' => now(),
                     ];
                 }
             }
@@ -211,6 +213,7 @@ class SubscribersController extends Controller
 
         $query = "UPDATE sendportal_subscribers SET ";
         $query .= "workspace_id = {$workspaceId}, ";
+        $query .= "updated_at = NOW(), ";
         $query .= "email = CASE id {$cases['email']} END, ";
         $query .= "first_name = CASE id {$cases['first_name']} END, ";
         $query .= "last_name = CASE id {$cases['last_name']} END, ";
