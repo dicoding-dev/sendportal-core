@@ -158,6 +158,7 @@ class SubscribersController extends Controller
 
         // Fetch all subscribers that were just inserted or updated
         $subscribers = DB::table('sendportal_subscribers')
+            ->where('workspace_id', $workspaceId)
             ->whereIn('email', $emails)
             ->orderBy('id')
             ->get(['id', 'email', 'first_name', 'last_name']);

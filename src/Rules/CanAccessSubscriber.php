@@ -12,13 +12,16 @@ class CanAccessSubscriber implements Rule
 {
     public function passes($attribute, $value): bool
     {
-        $subscriber = Subscriber::find($value);
+        $workspaceId = Sendportal::currentWorkspaceId();
+        $subscriber = Subscriber::query()
+            ->where('workspace_id', $workspaceId)
+            ->find($value);
 
         if (! $subscriber) {
             return false;
         }
 
-        return $subscriber->workspace_id == Sendportal::currentWorkspaceId();
+        return $subscriber->workspace_id == $workspaceId;
     }
 
     /**
