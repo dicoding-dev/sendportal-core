@@ -40,12 +40,14 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
  * @property EmailService|null $email_service
  * @property EloquentCollection $messages
  * @property EloquentCollection $sent_messages
+ * @property EloquentCollection $bounced_messages
  * @property EloquentCollection $opens
  * @property EloquentCollection $clicks
  *
  * @property-read int $active_subscriber_count_attribute
  * @property-read int $sent_count
  * @property-read int $unsent_count
+ * @property-read int $bounced_count
  * @property-read string $sent_count_formatted
  * @property-read float|int $open_ratio
  * @property-read float|int $click_ratio
@@ -151,6 +153,14 @@ class Campaign extends BaseModel
     }
 
     /**
+     * All of a campaign's bounced messages.
+     */
+    public function bounced_messages(): MorphMany
+    {
+        return $this->messages()->whereNotNull('bounced_at');
+    }
+
+    /**
      * All of a campaign's opened messages.
      */
     public function opens(): MorphMany
@@ -205,6 +215,11 @@ class Campaign extends BaseModel
         }
 
         return (string)$value;
+    }
+
+    public function getBouncedCountAttribute(): int
+    {
+        return $this->bounced_messages->count();
     }
 
     /**

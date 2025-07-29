@@ -11,6 +11,7 @@ use Sendportal\Base\Facades\Sendportal;
 use Sendportal\Base\Http\Controllers\Controller;
 use Sendportal\Base\Http\Requests\Api\CampaignStoreRequest;
 use Sendportal\Base\Http\Resources\Campaign as CampaignResource;
+use Sendportal\Base\Http\Resources\CampaignStat;
 use Sendportal\Base\Repositories\Campaigns\CampaignTenantRepositoryInterface;
 
 class CampaignsController extends Controller
@@ -85,5 +86,24 @@ class CampaignsController extends Controller
         $campaign->tags()->sync($request->get('tags'));
 
         return new CampaignResource($campaign);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function stats(): AnonymousResourceCollection
+    {
+        $workspaceId = Sendportal::currentWorkspaceId();
+
+        return CampaignStat::collection(
+            $this->campaigns->paginate(
+                $workspaceId,
+                'idDesc',
+                ['status', 'opens', 'clicks'],
+                parameters: [
+                    'name' => request('name'),
+                ]
+            )
+        );
     }
 }

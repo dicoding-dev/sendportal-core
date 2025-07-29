@@ -12,6 +12,7 @@ class ApiRoutes
     {
         return function () {
             $this->name('sendportal.api.')->prefix('v1')->namespace('\Sendportal\Base\Http\Controllers\Api')->group(static function (Router $apiRouter) {
+                $apiRouter->get('campaigns/stats', 'CampaignsController@stats')->name('campaigns.stats');
                 $apiRouter->apiResource('campaigns', 'CampaignsController');
                 $apiRouter->post('campaigns/{id}/send', 'CampaignDispatchController@send')->name('campaigns.send');
                 $apiRouter->apiResource('subscribers', 'SubscribersController');

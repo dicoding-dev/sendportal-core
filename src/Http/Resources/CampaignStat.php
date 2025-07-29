@@ -1,0 +1,33 @@
+<?php
+
+namespace Sendportal\Base\Http\Resources;
+
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class CampaignStat extends JsonResource
+{
+    /**
+     * Transform the resource into an array.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @return array
+     */
+    public function toArray($request)
+    {
+        return [
+            'id' => $this->id,
+            'name' => $this->name,
+            'status_id' => $this->status_id,
+            'status_text' => $this->status->name,
+            'from_name' => $this->from_name,
+            'from_email' => $this->from_email,
+            'sent_count' => $this->sent_count,
+            'bounced_count' => $this->bounced_count,
+            'open_count' => $this->unique_open_count,
+            'click_count' => $this->unique_click_count,
+            'scheduled_at' => $this->scheduled_at ? $this->scheduled_at->toDateTimeString() : null,
+            'created_at' => $this->created_at->toDateTimeString(),
+            'updated_at' => $this->updated_at->toDateTimeString()
+        ];
+    }
+}
