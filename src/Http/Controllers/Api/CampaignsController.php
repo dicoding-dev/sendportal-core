@@ -99,7 +99,7 @@ class CampaignsController extends Controller
             $this->campaigns->paginate(
                 $workspaceId,
                 'idDesc',
-                ['status', 'opens', 'clicks'],
+                ['status'],
                 parameters: [
                     'name' => request('name'),
                 ]
