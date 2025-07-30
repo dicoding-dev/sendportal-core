@@ -18,16 +18,16 @@ class CampaignStat extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'status_id' => $this->status_id,
-            'status_text' => $this->status->name,
+            'status_text' => $this->status_text,
             'from_name' => $this->from_name,
             'from_email' => $this->from_email,
             'sent_count' => $this->sent_count,
             'bounced_count' => $this->bounced_count,
-            'open_count' => $this->unique_open_count,
-            'click_count' => $this->unique_click_count,
-            'scheduled_at' => $this->scheduled_at ? $this->scheduled_at->toDateTimeString() : null,
-            'created_at' => $this->created_at->toDateTimeString(),
-            'updated_at' => $this->updated_at->toDateTimeString()
+            'open_count' => $this->open_count,
+            'click_count' => $this->click_count,
+            'scheduled_at' => $this->scheduled_at,
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }
