@@ -190,7 +190,7 @@ class Campaign extends BaseModel
 
     public function getSentCountAttribute(): int
     {
-        return $this->sent_messages->count();
+        return $this->sent_messages()->count();
     }
 
     public function getUnsentCountAttribute(): int
