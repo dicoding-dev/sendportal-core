@@ -219,7 +219,7 @@ class Campaign extends BaseModel
 
     public function getBouncedCountAttribute(): int
     {
-        return $this->bounced_messages->count();
+        return $this->bounced_messages()->count();
     }
 
     /**
