@@ -23,8 +23,8 @@ class CampaignDispatchService
             return;
         }
 
-        if (! $campaign->queued) {
-            \Log::error('Campaign does not have a queued status campaign_id=' . $campaign->id . ' status_id=' . $campaign->status_id);
+        if (! $campaign->queued && ! $campaign->sending) {
+            \Log::error('Campaign does not have a queued or sending status campaign_id=' . $campaign->id . ' status_id=' . $campaign->status_id);
 
             return;
         }
