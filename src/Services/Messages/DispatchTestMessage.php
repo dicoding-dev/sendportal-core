@@ -10,7 +10,10 @@ use Sendportal\Base\Models\Campaign;
 use Sendportal\Base\Models\EmailService;
 use Sendportal\Base\Models\Message;
 use Sendportal\Base\Repositories\Campaigns\CampaignTenantRepositoryInterface;
+use Sendportal\Base\Repositories\Subscribers\SubscriberTenantRepositoryInterface;
+use Sendportal\Base\Repositories\TemplateTenantRepository;
 use Sendportal\Base\Services\Content\MergeContentService;
+use Sendportal\Base\Services\Content\MergeSubjectService;
 
 class DispatchTestMessage
 {
@@ -26,16 +29,26 @@ class DispatchTestMessage
     /** @var CampaignTenantRepositoryInterface */
     protected $campaignTenant;
 
+    private SubscriberTenantRepositoryInterface $subscriberTenant;
+    private TemplateTenantRepository $templateTenant;
+    private MergeSubjectService $mergeSubject;
+
     public function __construct(
         CampaignTenantRepositoryInterface $campaignTenant,
+        SubscriberTenantRepositoryInterface $subscriberTenant,
+        TemplateTenantRepository $templateTenant,
         MergeContentService $mergeContent,
+        MergeSubjectService $mergeSubject,
         ResolveEmailService $resolveEmailService,
         RelayMessage $relayMessage
     ) {
         $this->resolveEmailService = $resolveEmailService;
         $this->relayMessage = $relayMessage;
         $this->mergeContent = $mergeContent;
+        $this->mergeSubject = $mergeSubject;
         $this->campaignTenant = $campaignTenant;
+        $this->subscriberTenant = $subscriberTenant;
+        $this->templateTenant = $templateTenant;
     }
 
     /**
@@ -62,6 +75,37 @@ class DispatchTestMessage
         $trackingOptions = MessageTrackingOptions::fromCampaign($campaign);
 
         return $this->dispatch($message, $emailService, $trackingOptions, $mergedContent);
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function handleWithoutCampaign(int $workspaceId, int $emailServiceId, int $templateId, MessageOptions $options): ?string
+    {
+        $message = new Message([
+            'workspace_id' => $workspaceId,
+            'recipient_email' => $options->getTo(),
+            'subject' => '[test] ' . $options->getSubject(),
+            'from_name' => $options->getFromName(),
+            'from_email' => $options->getFromEmail(),
+            'hash' => 'abc123',
+            'subscriber' => $this->subscriberTenant->findBy($workspaceId, 'email', $options->getTo()),
+        ]);
+
+        $message->subject = $this->mergeSubject->handle($message);
+
+        $emailBody = $this->mergeContent->handleTest(
+            $message,
+            $this->templateTenant->find($workspaceId, $templateId)->content,
+            $options->getBody()
+        );
+
+        return $this->dispatch(
+            $message,
+            EmailService::query()->find($emailServiceId),
+            (new MessageTrackingOptions())->disable(),
+            $emailBody
+        );
     }
 
     /**

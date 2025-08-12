@@ -39,6 +39,14 @@ class MergeContentService
         return $this->inlineStyles($this->resolveContent($message));
     }
 
+    public function handleTest(Message $message, string $template, $content): string
+    {
+        $content = $this->mergeContent($content, $template);
+        $content = $this->mergeTags($content, $message);
+
+        return $this->inlineStyles($content);
+    }
+
     /**
      * @throws Exception
      */
