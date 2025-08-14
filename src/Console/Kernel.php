@@ -4,6 +4,7 @@ namespace Sendportal\Base\Console;
 
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Illuminate\Support\Facades\Log;
 use Sendportal\Base\Console\Commands\CampaignDispatchCommand;
 
 class Kernel extends ConsoleKernel
@@ -27,6 +28,9 @@ class Kernel extends ConsoleKernel
     {
         $schedule->command(CampaignDispatchCommand::class)->everyMinute()->withoutOverlapping();
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
+        $schedule->call(function () {
+            Log::info('Test log inside task scheduler');
+        })->everyMinute();
     }
 
     /**
