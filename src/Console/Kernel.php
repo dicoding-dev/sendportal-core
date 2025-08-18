@@ -25,7 +25,11 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        $schedule->command(CampaignDispatchCommand::class)->everyMinute()->withoutOverlapping();
+        $schedule->command(CampaignDispatchCommand::class)
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->appendOutputTo(config('sendportal.command_output_path', '/dev/null'));
+
         $schedule->command('horizon:snapshot')->everyFiveMinutes();
     }
 
