@@ -24,7 +24,7 @@ interface CampaignTenantRepositoryInterface extends BaseTenantInterface
     /**
      * Campaigns that have been completed (have a SENT status).
      */
-    public function completedCampaigns(int $workspaceId, array $relations = []): EloquentCollection;
+    public function completedCampaigns(int $workspaceId, int $limit = 10, array $relations = []): EloquentCollection;
 
     /**
      * Get open counts and ratios for a campaign.

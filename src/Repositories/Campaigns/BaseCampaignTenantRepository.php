@@ -25,11 +25,13 @@ abstract class BaseCampaignTenantRepository extends BaseTenantRepository impleme
     /**
      * {@inheritDoc}
      */
-    public function completedCampaigns(int $workspaceId, array $relations = []): EloquentCollection
+    public function completedCampaigns(int $workspaceId, int $limit = 10, array $relations = []): EloquentCollection
     {
         return $this->getQueryBuilder($workspaceId)
             ->where('status_id', CampaignStatus::STATUS_SENT)
             ->with($relations)
+            ->take($limit)
+            ->orderBy('id', 'desc')
             ->get();
     }
 

@@ -47,7 +47,7 @@ class DashboardController extends Controller
     public function index(): View
     {
         $workspaceId = Sendportal::currentWorkspaceId();
-        $completedCampaigns = $this->campaigns->completedCampaigns($workspaceId, ['status']);
+        $completedCampaigns = $this->campaigns->completedCampaigns($workspaceId, 10, ['status']);
         $subscriberGrowthChart = $this->getSubscriberGrowthChart($workspaceId);
 
         return view('sendportal::dashboard.index', [
