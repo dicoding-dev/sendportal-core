@@ -67,7 +67,6 @@ class CampaignsController extends Controller
 
         return view('sendportal::campaigns.index', [
             'campaigns' => $campaigns,
-            'campaignStats' => $this->campaignStatisticsService->getForPaginator($campaigns, $workspaceId),
         ]);
     }
 
