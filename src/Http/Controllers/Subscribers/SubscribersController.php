@@ -43,7 +43,7 @@ class SubscribersController extends Controller
         $subscribers = $this->subscriberRepo->paginate(
             Sendportal::currentWorkspaceId(),
             'email',
-            ['tags'],
+            [],
             50,
             request()->all()
         )->withQueryString();

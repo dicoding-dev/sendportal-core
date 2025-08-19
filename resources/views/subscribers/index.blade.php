@@ -75,7 +75,6 @@
                 <tr>
                     <th>{{ __('Email') }}</th>
                     <th>{{ __('Name') }}</th>
-                    <th>{{ __('Tags') }}</th>
                     <th>{{ __('Created') }}</th>
                     <th>{{ __('Status') }}</th>
                     <th>{{ __('Actions') }}</th>
@@ -90,12 +89,6 @@
                             </a>
                         </td>
                         <td>{{ $subscriber->full_name }}</td>
-                        <td>
-                            @forelse($subscriber->tags as $tag)
-                                <span class="badge badge-light">{{ $tag->name }}</span>
-                            @empty
-                                -
-                            @endforelse
                         <td><span
                                 title="{{ $subscriber->created_at }}">{{ $subscriber->created_at->diffForHumans() }}</span>
                         </td>
