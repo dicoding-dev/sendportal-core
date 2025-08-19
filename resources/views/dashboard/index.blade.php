@@ -109,6 +109,13 @@
                             </tr>
                         @endforelse
                         </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="7">
+                                    <a href="{{ route('sendportal.campaigns.sent') }}">See all completed campaigns <i class="fa fa-arrow-right"></i></a>
+                                </th>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
@@ -162,6 +169,13 @@
                             </tr>
                         @endforelse
                         </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="5">
+                                    <a href="{{ route('sendportal.subscribers.index') }}">See all subscribers <i class="fa fa-arrow-right"></i></a>
+                                </th>
+                            </tr>
+                        </tfoot>
                     </table>
                 </div>
             </div>
