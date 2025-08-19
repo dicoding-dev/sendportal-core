@@ -131,12 +131,13 @@ abstract class BaseCampaignTenantRepository extends BaseTenantRepository impleme
         /** @var Tag $tag */
         $tag = $campaign->tags()->where('name', '=', 'Campaign: '.$campaign->name)->first();
 
-        /** Detach subscribers specific to this campaign */
+        /** Detach subscribers and delete tag specific to this campaign */
         if ($tag) {
             $tag->subscribers()->detach();
+            $tag->delete();
         }
 
-        /** Detach all tags from this campaign */
+        /** Detach all other tags used by this campaign */
         $campaign->tags()->detach();
 
         return parent::destroy($workspaceId, $id);
