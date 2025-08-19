@@ -11,6 +11,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Sendportal\Base\Models\Campaign;
 use Sendportal\Base\Models\CampaignStatus;
+use Sendportal\Base\Models\Tag;
 use Sendportal\Base\Repositories\BaseTenantRepository;
 use Sendportal\Base\Traits\SecondsToHms;
 
@@ -119,5 +120,23 @@ abstract class BaseCampaignTenantRepository extends BaseTenantRepository impleme
         if (Arr::get($filters, 'name')) {
             $instance->where($instance->getModel()->getTable() . '.name', Arr::get($filters, 'name'));
         }
+    }
+
+    public function destroy($workspaceId, $id)
+    {
+        /** @var Campaign $campaign */
+        $campaign = $this->find($workspaceId, $id);
+        /** @var Tag $tag */
+        $tag = $campaign->tags()->where('name', '=', 'Campaign: '.$campaign->name)->first();
+
+        /** Detach subscribers specific to this campaign */
+        if ($tag) {
+            $tag->subscribers()->detach();
+        }
+
+        /** Detach all tags from this campaign */
+        $campaign->tags()->detach();
+
+        return parent::destroy($workspaceId, $id);
     }
 }
