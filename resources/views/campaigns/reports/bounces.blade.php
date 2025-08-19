@@ -31,7 +31,7 @@
                                     </div>
                                 @endforeach
                             </td>
-                            <td>{{ \Sendportal\Base\Facades\Helper::displayDate($message->bounced_at) }}</td>
+                            <td>{{ \Sendportal\Base\Facades\Helper::displayDate($message->bounced_at)?->format('Y-m-d H:i:s') }}</td>
                         </tr>
                     @empty
                         <tr>

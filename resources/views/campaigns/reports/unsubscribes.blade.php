@@ -23,7 +23,7 @@
                         <tr>
                             <td><a href="{{ route('sendportal.subscribers.show', $message->subscriber_id) }}">{{ $message->recipient_email }}</a></td>
                             <td>{{ $message->subject }}</td>
-                            <td>{{ \Sendportal\Base\Facades\Helper::displayDate($message->unsubscribed_at) }}</td>
+                            <td>{{ \Sendportal\Base\Facades\Helper::displayDate($message->unsubscribed_at)?->format('Y-m-d H:i:s') }}</td>
                         </tr>
                     @empty
                         <tr>
