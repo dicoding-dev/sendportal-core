@@ -163,6 +163,19 @@ class HandleSesWebhook implements ShouldQueue
         $bounceType = Arr::get($event, 'bounce.bounceType');
         $timestamp = Carbon::parse(Arr::get($event, 'bounce.timestamp'));
 
+        if (isset($event['bounce']['bouncedRecipients'][0]['action'])) {
+            $description = sprintf(
+                '%s - (%s) %s',
+                Arr::get($event, 'bounce.bounceSubType'),
+                Arr::get($event, 'bounce.bouncedRecipients.0.status'),
+                Arr::get($event, 'bounce.bouncedRecipients.0.diagnosticCode')
+            );
+        } else {
+            $description = Arr::get($event, 'bounce.bounceSubType');
+        }
+
+        $this->emailWebhookService->handleFailure($messageId, $bounceType, $description, $timestamp);
+
         // https://aws.amazon.com/blogs/messaging-and-targeting/handling-bounces-and-complaints/
         if (strtolower($bounceType) === 'permanent') {
             $this->emailWebhookService->handlePermanentBounce($messageId, $timestamp);
