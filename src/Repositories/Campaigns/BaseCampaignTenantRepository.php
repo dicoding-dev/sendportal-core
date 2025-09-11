@@ -40,25 +40,31 @@ abstract class BaseCampaignTenantRepository extends BaseTenantRepository impleme
      */
     public function getCounts(Collection $campaignIds, int $workspaceId): array
     {
-        $counts = DB::table('sendportal_campaigns')
-            ->leftJoin('sendportal_messages', function ($join) use ($campaignIds, $workspaceId) {
-                $join->on('sendportal_messages.source_id', '=', 'sendportal_campaigns.id')
-                    ->where('sendportal_messages.source_type', Campaign::class)
-                    ->whereIn('sendportal_messages.source_id', $campaignIds)
-                    ->where('sendportal_messages.workspace_id', $workspaceId);
-            })
-            ->select('sendportal_campaigns.id as campaign_id')
-            ->selectRaw(sprintf('count(%ssendportal_messages.id) as total', DB::getTablePrefix()))
-            ->selectRaw(sprintf('count(case when %ssendportal_messages.opened_at IS NOT NULL then 1 end) as opened', DB::getTablePrefix()))
-            ->selectRaw(sprintf('count(case when %ssendportal_messages.clicked_at IS NOT NULL then 1 end) as clicked', DB::getTablePrefix()))
-            ->selectRaw(sprintf('count(case when %ssendportal_messages.sent_at IS NOT NULL then 1 end) as sent', DB::getTablePrefix()))
-            ->selectRaw(sprintf('count(case when %ssendportal_messages.bounced_at IS NOT NULL then 1 end) as bounced', DB::getTablePrefix()))
-            ->selectRaw(sprintf('count(case when %ssendportal_messages.sent_at IS NULL then 1 end) as pending', DB::getTablePrefix()))
-            ->groupBy('sendportal_campaigns.id')
-            ->orderBy('sendportal_campaigns.id')
-            ->get();
+        return cache()->remember(
+            'sendportal_campaigns_counts:'.$campaignIds->implode(','),
+            60,
+            function () use ($campaignIds, $workspaceId) {
+                $counts = DB::table('sendportal_campaigns')
+                    ->leftJoin('sendportal_messages', function ($join) use ($campaignIds, $workspaceId) {
+                        $join->on('sendportal_messages.source_id', '=', 'sendportal_campaigns.id')
+                            ->where('sendportal_messages.source_type', Campaign::class)
+                            ->whereIn('sendportal_messages.source_id', $campaignIds)
+                            ->where('sendportal_messages.workspace_id', $workspaceId);
+                    })
+                    ->select('sendportal_campaigns.id as campaign_id')
+                    ->selectRaw(sprintf('count(%ssendportal_messages.id) as total', DB::getTablePrefix()))
+                    ->selectRaw(sprintf('count(case when %ssendportal_messages.opened_at IS NOT NULL then 1 end) as opened', DB::getTablePrefix()))
+                    ->selectRaw(sprintf('count(case when %ssendportal_messages.clicked_at IS NOT NULL then 1 end) as clicked', DB::getTablePrefix()))
+                    ->selectRaw(sprintf('count(case when %ssendportal_messages.sent_at IS NOT NULL then 1 end) as sent', DB::getTablePrefix()))
+                    ->selectRaw(sprintf('count(case when %ssendportal_messages.bounced_at IS NOT NULL then 1 end) as bounced', DB::getTablePrefix()))
+                    ->selectRaw(sprintf('count(case when %ssendportal_messages.sent_at IS NULL then 1 end) as pending', DB::getTablePrefix()))
+                    ->groupBy('sendportal_campaigns.id')
+                    ->orderBy('sendportal_campaigns.id')
+                    ->get();
 
-        return $counts->flatten()->keyBy('campaign_id')->toArray();
+                return $counts->flatten()->keyBy('campaign_id')->toArray();
+            }
+        );
     }
 
     /**
