@@ -61,28 +61,34 @@ class DashboardController extends Controller
 
     protected function getSubscriberGrowthChart($workspaceId): array
     {
-        $period = CarbonPeriod::create(now()->subDays(30)->startOfDay(), now()->endOfDay());
+        return cache()->remember(
+            'sendportal_subscriber_growth_chart',
+            now()->addHour(),
+            function () use ($workspaceId) {
+                $period = CarbonPeriod::create(now()->subDays(30)->startOfDay(), now()->endOfDay());
 
-        $growthChartData = $this->subscribers->getGrowthChartData($period, $workspaceId);
+                $growthChartData = $this->subscribers->getGrowthChartData($period, $workspaceId);
 
-        $growthChart = [
-            'labels' => [],
-            'data' => [],
-        ];
+                $growthChart = [
+                    'labels' => [],
+                    'data' => [],
+                ];
 
-        $currentTotal = $growthChartData['startingValue'];
+                $currentTotal = $growthChartData['startingValue'];
 
-        foreach ($period as $date) {
-            $formattedDate = $date->format('d-m-Y');
+                foreach ($period as $date) {
+                    $formattedDate = $date->format('d-m-Y');
 
-            $periodValue = $growthChartData['runningTotal'][$formattedDate]->total ?? 0;
-            $periodUnsubscribe = $growthChartData['unsubscribers'][$formattedDate]->total ?? 0;
-            $currentTotal += $periodValue - $periodUnsubscribe;
+                    $periodValue = $growthChartData['runningTotal'][$formattedDate]->total ?? 0;
+                    $periodUnsubscribe = $growthChartData['unsubscribers'][$formattedDate]->total ?? 0;
+                    $currentTotal += $periodValue - $periodUnsubscribe;
 
-            $growthChart['labels'][] = $formattedDate;
-            $growthChart['data'][] = $currentTotal;
-        }
+                    $growthChart['labels'][] = $formattedDate;
+                    $growthChart['data'][] = $currentTotal;
+                }
 
-        return $growthChart;
+                return $growthChart;
+            }
+        );
     }
 }
