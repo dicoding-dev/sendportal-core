@@ -22,7 +22,8 @@ class Subscriber extends JsonResource
             'email' => $this->email,
 //            'tags' => TagResource::collection($this->whenLoaded('tags')),
 //            'meta' => $this->meta,
-//            'unsubscribed_at' => $this->unsubscribed_at ? $this->unsubscribed_at->toDateTimeString() : null,
+            'unsubscribed_at' => $this->unsubscribed_at ?? null,
+            'unsubscribe_event_id' => $this->unsubscribe_event_id ?? null,
 //            'created_at' => $this->created_at->toDateTimeString(),
 //            'updated_at' => $this->updated_at->toDateTimeString()
         ];

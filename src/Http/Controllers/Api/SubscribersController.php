@@ -161,7 +161,7 @@ class SubscribersController extends Controller
             ->where('workspace_id', $workspaceId)
             ->whereIn('email', $emails)
             ->orderBy('id')
-            ->get(['id', 'email', 'first_name', 'last_name']);
+            ->get(['id', 'email', 'first_name', 'last_name', 'unsubscribed_at', 'unsubscribe_event_id']);
 
         return SubscriberResource::collection($subscribers);
     }
