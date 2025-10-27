@@ -1,4 +1,4 @@
-@extends('common.template')
+@extends('sendportal::layouts.app')
 
 @section('heading')
     {{ __('Campaign') }}: {{ $campaign->name }}
