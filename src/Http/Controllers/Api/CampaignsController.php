@@ -118,10 +118,11 @@ class CampaignsController extends Controller
             Sendportal::currentWorkspaceId()
         );
 
-        $campaigns = $campaigns->map(function ($campaign) use ($campaignStats) {
+        $campaignsWithStats = $campaigns->map(function ($campaign) use ($campaignStats) {
             $campaign->stats = $campaignStats[$campaign->id];
             return $campaign;
         });
+        $campaigns->setCollection($campaignsWithStats);
 
         return CampaignStat::collection($campaigns);
     }
