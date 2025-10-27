@@ -21,13 +21,10 @@ class CampaignStat extends JsonResource
             'status_text' => $this->status_text,
             'from_name' => $this->from_name,
             'from_email' => $this->from_email,
-            'sent_count' => $this->sent_count,
-            'bounced_count' => $this->bounced_count,
-            'open_count' => $this->open_count,
-            'click_count' => $this->click_count,
             'scheduled_at' => $this->scheduled_at,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
+            'stats' => $this->stats,
         ];
     }
 }

@@ -12,18 +12,15 @@ use Sendportal\Base\Http\Controllers\Controller;
 use Sendportal\Base\Http\Requests\Api\CampaignStoreRequest;
 use Sendportal\Base\Http\Resources\Campaign as CampaignResource;
 use Sendportal\Base\Http\Resources\CampaignStat;
-use Sendportal\Base\Models\Campaign;
-use Sendportal\Base\Models\Message;
 use Sendportal\Base\Repositories\Campaigns\CampaignTenantRepositoryInterface;
+use Sendportal\Base\Services\Campaigns\CampaignStatisticsService;
 
 class CampaignsController extends Controller
 {
-    /** @var CampaignTenantRepositoryInterface */
-    private $campaigns;
-
-    public function __construct(CampaignTenantRepositoryInterface $campaigns)
-    {
-        $this->campaigns = $campaigns;
+    public function __construct(
+        private readonly CampaignTenantRepositoryInterface $campaigns,
+        private readonly CampaignStatisticsService $campaignStatisticsService,
+    ) {
     }
 
     /**
@@ -95,13 +92,7 @@ class CampaignsController extends Controller
      */
     public function stats(): AnonymousResourceCollection
     {
-        $messageBaseQuery = Message::query()
-            ->selectRaw('count(id)')
-            ->where('source_type', '=', Campaign::class)
-            ->whereColumn('source_id','=', 'sendportal_campaigns.id');
-
         $campaigns = $this->campaigns->getQueryBuilder(Sendportal::currentWorkspaceId())
-            ->toBase()
             ->join(
                 'sendportal_campaign_statuses',
                 'sendportal_campaigns.status_id',
@@ -118,13 +109,20 @@ class CampaignsController extends Controller
                 'sendportal_campaigns.created_at',
                 'sendportal_campaigns.updated_at',
                 'sendportal_campaign_statuses.name as status_text',
-                'sent_count' => $messageBaseQuery->clone()->whereNotNull('sent_at'),
-                'bounced_count' => $messageBaseQuery->clone()->whereNotNull('bounced_at'),
-                'open_count' => $messageBaseQuery->clone()->whereNotNull('opened_at'),
-                'click_count' => $messageBaseQuery->clone()->whereNotNull('clicked_at'),
             ])
-            ->orderBy('sendportal_campaigns.id', 'desc');
+            ->orderBy('sendportal_campaigns.id', 'desc')
+            ->paginate(25);
 
-        return CampaignStat::collection($campaigns->paginate(25));
+        $campaignStats = $this->campaignStatisticsService->getForPaginator(
+            $campaigns,
+            Sendportal::currentWorkspaceId()
+        );
+
+        $campaigns = $campaigns->map(function ($campaign) use ($campaignStats) {
+            $campaign->stats = $campaignStats[$campaign->id];
+            return $campaign;
+        });
+
+        return CampaignStat::collection($campaigns);
     }
 }
