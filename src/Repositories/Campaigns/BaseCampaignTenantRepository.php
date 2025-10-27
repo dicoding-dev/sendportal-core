@@ -41,28 +41,29 @@ abstract class BaseCampaignTenantRepository extends BaseTenantRepository impleme
     public function getCounts(Collection $campaignIds, int $workspaceId): array
     {
         return cache()->remember(
-            'sendportal_campaigns_counts:'.$campaignIds->implode(','),
+            'sendportal_campaigns_counts:v2:'.$campaignIds->implode(','),
             60,
-            function () use ($campaignIds, $workspaceId) {
+            function () use ($campaignIds) {
                 $counts = DB::table('sendportal_campaigns')
-                    ->leftJoin('sendportal_messages', function ($join) use ($campaignIds, $workspaceId) {
+                    ->leftJoin('sendportal_messages', function ($join) {
                         $join->on('sendportal_messages.source_id', '=', 'sendportal_campaigns.id')
-                            ->where('sendportal_messages.source_type', Campaign::class)
-                            ->whereIn('sendportal_messages.source_id', $campaignIds)
-                            ->where('sendportal_messages.workspace_id', $workspaceId);
+                            ->where('sendportal_messages.source_type', Campaign::class);
                     })
+                    ->whereIn('sendportal_campaigns.id', $campaignIds)
                     ->select('sendportal_campaigns.id as campaign_id')
-                    ->selectRaw(sprintf('count(%ssendportal_messages.id) as total', DB::getTablePrefix()))
-                    ->selectRaw(sprintf('count(case when %ssendportal_messages.opened_at IS NOT NULL then 1 end) as opened', DB::getTablePrefix()))
-                    ->selectRaw(sprintf('count(case when %ssendportal_messages.clicked_at IS NOT NULL then 1 end) as clicked', DB::getTablePrefix()))
-                    ->selectRaw(sprintf('count(case when %ssendportal_messages.sent_at IS NOT NULL then 1 end) as sent', DB::getTablePrefix()))
-                    ->selectRaw(sprintf('count(case when %ssendportal_messages.bounced_at IS NOT NULL then 1 end) as bounced', DB::getTablePrefix()))
-                    ->selectRaw(sprintf('count(case when %ssendportal_messages.sent_at IS NULL then 1 end) as pending', DB::getTablePrefix()))
+                    ->selectRaw('COUNT(sendportal_messages.id) as total')
+                    ->selectRaw('SUM(CASE WHEN sendportal_messages.opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened')
+                    ->selectRaw('SUM(CASE WHEN sendportal_messages.clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked')
+                    ->selectRaw('SUM(CASE WHEN sendportal_messages.sent_at IS NOT NULL THEN 1 ELSE 0 END) as sent')
+                    ->selectRaw('SUM(CASE WHEN sendportal_messages.bounced_at IS NOT NULL THEN 1 ELSE 0 END) as bounced')
+                    ->selectRaw('SUM(CASE WHEN sendportal_messages.sent_at IS NULL THEN 1 ELSE 0 END) as pending')
                     ->groupBy('sendportal_campaigns.id')
-                    ->orderBy('sendportal_campaigns.id')
                     ->get();
 
-                return $counts->flatten()->keyBy('campaign_id')->toArray();
+                return $counts->flatten()
+                    ->keyBy('campaign_id')
+                    ->sortKeys()
+                    ->toArray();
             }
         );
     }
