@@ -59,10 +59,12 @@ class CampaignStatisticsService
                     'open' => $countData[$campaign->id]->opened,
                     'click' => $countData[$campaign->id]->clicked,
                     'sent' => $countData[$campaign->id]->sent,
+                    'bounce' => $countData[$campaign->id]->bounced,
                 ],
                 'ratios' => [
                     'open' => $campaign->getActionRatio($countData[$campaign->id]->opened, $countData[$campaign->id]->sent),
                     'click' => $campaign->getActionRatio($countData[$campaign->id]->clicked, $countData[$campaign->id]->sent),
+                    'bounce' => $campaign->getActionRatio($countData[$campaign->id]->bounced, $countData[$campaign->id]->sent),
                 ],
             ];
         })->keyBy('campaign_id');
