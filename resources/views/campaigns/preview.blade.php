@@ -98,7 +98,7 @@
                             <div class="checkbox">
                                 <label>
                                     <input name="tags[]" type="checkbox" value="{{ $tag->id }}">
-                                    {{ $tag->name }} ({{ $tag->subscribers_count }} {{ __('subscribers') }})
+                                    {{ $tag->name }} <small class="badge badge-light">({{ number_format($tag->subscribers_count) }} {{ __('subscribers') }})</small>
                                 </label>
                             </div>
                         @empty
