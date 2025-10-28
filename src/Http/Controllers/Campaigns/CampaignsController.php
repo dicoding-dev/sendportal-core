@@ -151,7 +151,7 @@ class CampaignsController extends Controller
             $this->handleCheckboxes($request->validated())
         );
 
-        return redirect()->route('sendportal.campaigns.preview', $campaign->id);
+        return redirect()->route('sendportal.campaigns.preview', ['id' => $campaign->id, 'show_all_tags' => 0]);
     }
 
     /**
@@ -167,7 +167,10 @@ class CampaignsController extends Controller
             return redirect()->route('sendportal.campaigns.status', $id);
         }
 
-        $tags = $this->tags->all(Sendportal::currentWorkspaceId(), 'name');
+        $tags = $this->tags->all(Sendportal::currentWorkspaceId(), 'name', parameters: [
+            // This is a hack to only show tag specific to this campaign, but can be overridden by the query string.
+            'name' => request('show_all_tags') ? null : "Campaign: $campaign->name",
+        ]);
 
         return view('sendportal::campaigns.preview', compact('campaign', 'tags', 'subscriberCount'));
     }
