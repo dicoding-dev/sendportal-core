@@ -9,6 +9,7 @@ use Illuminate\View\View;
 use Sendportal\Base\Http\Controllers\Controller;
 use Sendportal\Base\Http\Requests\SubscriptionToggleRequest;
 use Sendportal\Base\Models\Message;
+use Sendportal\Base\Models\MessageLookup;
 use Sendportal\Base\Models\UnsubscribeEventType;
 use Sendportal\Base\Repositories\Messages\MessageTenantRepositoryInterface;
 
@@ -27,7 +28,7 @@ class SubscriptionsController extends Controller
      */
     public function unsubscribe(string $messageHash): View
     {
-        $message = Message::with('subscriber')->where('hash', $messageHash)->first();
+        $message = $this->findMessageByHash($messageHash, ['subscriber']);
 
         return view('sendportal::subscriptions.unsubscribe', compact('message'));
     }
@@ -37,7 +38,7 @@ class SubscriptionsController extends Controller
      */
     public function subscribe(string $messageHash): View
     {
-        $message = Message::with('subscriber')->where('hash', $messageHash)->first();
+        $message = $this->findMessageByHash($messageHash, ['subscriber']);
 
         return view('sendportal::subscriptions.subscribe', compact('message'));
     }
@@ -47,7 +48,7 @@ class SubscriptionsController extends Controller
      */
     public function update(SubscriptionToggleRequest $request, string $messageHash): RedirectResponse
     {
-        $message = Message::where('hash', $messageHash)->first();
+        $message = $this->findMessageByHash($messageHash);
         $subscriber = $message->subscriber;
 
         $unsubscribed = (bool)$request->get('unsubscribed');
@@ -73,5 +74,16 @@ class SubscriptionsController extends Controller
 
         return redirect()->route('sendportal.subscriptions.unsubscribe', $message->hash)
             ->with('success', __('You have been added to the mailing list.'));
+    }
+
+    protected function findMessageByHash(string $hash, array $with = []): ?Message
+    {
+        $query = Message::where('hash', $hash);
+
+        if ($sourceId = MessageLookup::where('hash', $hash)->value('source_id')) {
+            $query->where('source_id', $sourceId);
+        }
+
+        return $with ? $query->with($with)->first() : $query->first();
     }
 }
