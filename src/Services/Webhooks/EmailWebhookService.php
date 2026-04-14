@@ -13,16 +13,30 @@ use Sendportal\Base\Facades\Helper;
 use Sendportal\Base\Models\Message;
 use Sendportal\Base\Models\MessageFailure;
 use Sendportal\Base\Models\MessageUrl;
+use Sendportal\Base\Models\MessageLookup;
 use Sendportal\Base\Models\UnsubscribeEventType;
 use Sendportal\Pro\Models\AutomationSchedule;
 
 class EmailWebhookService
 {
+    /**
+     * Resolve source_id from the lookup table for partition-pruned queries.
+     * Returns null if no lookup row exists (e.g. messages older than retention).
+     */
+    public function resolveSourceId(string $messageId): ?int
+    {
+        return MessageLookup::where('message_id', $messageId)->value('source_id');
+    }
+
     public function handleDelivery(string $messageId, Carbon $timestamp): void
     {
-        DB::table('sendportal_messages')->where('message_id', $messageId)->whereNull('delivered_at')->update([
-            'delivered_at' => $timestamp
-        ]);
+        $query = DB::table('sendportal_messages')->where('message_id', $messageId)->whereNull('delivered_at');
+
+        if ($sourceId = $this->resolveSourceId($messageId)) {
+            $query->where('source_id', $sourceId);
+        }
+
+        $query->update(['delivered_at' => $timestamp]);
     }
 
     /**
@@ -30,8 +44,14 @@ class EmailWebhookService
      */
     public function handleOpen(string $messageId, Carbon $timestamp, ?string $ipAddress): void
     {
+        $query = Message::where('message_id', $messageId);
+
+        if ($sourceId = $this->resolveSourceId($messageId)) {
+            $query->where('source_id', $sourceId);
+        }
+
         /** @var Message $message */
-        $message = Message::where('message_id', $messageId)->first();
+        $message = $query->first();
 
         if (! $message) {
             return;
@@ -57,8 +77,14 @@ class EmailWebhookService
      */
     public function handleClick(string $messageId, Carbon $timestamp, ?string $url): void
     {
+        $query = Message::where('message_id', $messageId);
+
+        if ($sourceId = $this->resolveSourceId($messageId)) {
+            $query->where('source_id', $sourceId);
+        }
+
         /* @var Message $message */
-        $message = Message::where('message_id', $messageId)->first();
+        $message = $query->first();
 
         if (! $message) {
             return;
@@ -108,8 +134,14 @@ class EmailWebhookService
 
     public function handleComplaint(string $messageId, Carbon $timestamp): void
     {
+        $query = Message::where('message_id', $messageId);
+
+        if ($sourceId = $this->resolveSourceId($messageId)) {
+            $query->where('source_id', $sourceId);
+        }
+
         /* @var Message $message */
-        $message = Message::where('message_id', $messageId)->first();
+        $message = $query->first();
 
         if (! $message) {
             return;
@@ -125,8 +157,14 @@ class EmailWebhookService
 
     public function handlePermanentBounce($messageId, $timestamp): void
     {
+        $query = Message::where('message_id', $messageId);
+
+        if ($sourceId = $this->resolveSourceId($messageId)) {
+            $query->where('source_id', $sourceId);
+        }
+
         /* @var Message $message */
-        $message = Message::where('message_id', $messageId)->first();
+        $message = $query->first();
 
         if (! $message) {
             return;
@@ -142,8 +180,14 @@ class EmailWebhookService
 
     public function handleFailure($messageId, $severity, $description, $timestamp): void
     {
+        $query = Message::where('message_id', $messageId);
+
+        if ($sourceId = $this->resolveSourceId($messageId)) {
+            $query->where('source_id', $sourceId);
+        }
+
         /* @var Message $message */
-        $message = Message::where('message_id', $messageId)->first();
+        $message = $query->first();
 
         if (! $message) {
             return;
@@ -163,7 +207,13 @@ class EmailWebhookService
      */
     protected function unsubscribe(string $messageId, int $typeId): void
     {
-        $subscriberId = DB::table('sendportal_messages')->where('message_id', $messageId)->value('subscriber_id');
+        $query = DB::table('sendportal_messages')->where('message_id', $messageId);
+
+        if ($sourceId = $this->resolveSourceId($messageId)) {
+            $query->where('source_id', $sourceId);
+        }
+
+        $subscriberId = $query->value('subscriber_id');
 
         if (! $subscriberId) {
             return;

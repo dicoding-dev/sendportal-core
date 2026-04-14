@@ -171,7 +171,13 @@ class HandleMailgunWebhook implements ShouldQueue
      */
     private function checkWebhookValidity(string $messageId, array $payload): bool
     {
-        $message = Message::with('source.email_service')->where('message_id', $messageId)->first();
+        $query = Message::with('source.email_service')->where('message_id', $messageId);
+
+        if ($sourceId = $this->emailWebhookService->resolveSourceId($messageId)) {
+            $query->where('source_id', $sourceId);
+        }
+
+        $message = $query->first();
 
         /** @var EmailService|null $emailservice */
         $emailservice = $message->source->email_service ?? null;
