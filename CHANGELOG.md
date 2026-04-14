@@ -1,5 +1,49 @@
 # Sendportal Core
 
+## 4.0.0 - 2025-10-28
+
+### Added
+- Add `name` tag as alias for `first_name`
+- Send campaign name as email header
+- Add name filter for campaign API
+- Add API endpoint to sync multiple subscribers
+- Add API endpoint for campaign statistics
+- Add API endpoint to send test email
+- Make scheduled command output configurable
+- Record SES bounce failure reason
+- Add links to completed campaigns and subscribers on dashboard widgets
+- Delete specific tag when campaign was deleted
+- Cache subscriber growth chart
+- Cache campaigns stats
+- Return unsubscribed datetime and event for subscribers API
+- Include bounced count and sent ratios on campaign stats
+- Show all tags conditionally on preview page
+- Format subscribers count in tag list
+- Disable email service quota check temporarily when dispatching campaigns
+- Redispatch campaigns in sending status
+
+### Fixed
+- Fix SES quota API
+- Fix SES email adapter
+- Set correct queue for SES webhook listener
+- Fix missing hash value on subscriber sync
+- Fix query should take workspace as consideration
+- Fix detach tags before deleting campaign
+- Fix date format on campaigns report
+- Remove unused query on draft campaigns index
+- Fix use default timezone to avoid `tz` returning timezone name
+- Fix wrong layout template
+- Fix campaign stats API pagination
+- Fix show total subscribers for each tag in preview
+
+### Optimized
+- Optimize subscriber sync queries and memory usage (lazy collections)
+- Optimize campaign statistics query (count-only queries, remove eager loads)
+- Optimize campaign stats API
+- Lower pagination row per page to reduce query time
+- Limit recent completed campaigns widget on dashboard
+- Remove tags from subscriber list page
+
 ## 3.0.0 - 2024-04-18
 - Upgrade dependencies to Laravel V11 ([#194](https://github.com/mettle/sendportal-core/pull/194))
 
