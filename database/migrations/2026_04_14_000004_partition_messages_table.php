@@ -18,7 +18,7 @@ class PartitionMessagesTable extends Migration
 
         Schema::drop('sendportal_messages');
 
-        Schema::create('sendportal_messages', function ($table) {
+        Schema::create('sendportal_messages', function (\Illuminate\Database\Schema\Blueprint $table) {
             $table->increments('id');
             $table->uuid('hash');
             $table->unsignedInteger('workspace_id')->index();
@@ -44,13 +44,15 @@ class PartitionMessagesTable extends Migration
             $table->timestamps();
         });
 
-        // Adjust PK and unique index for partition key, then partition.
+        // Adjust PK and unique index for partition key.
         // Laravel Schema builder does not support PARTITION BY.
         DB::statement('ALTER TABLE sendportal_messages
             DROP INDEX sendportal_messages_hash_unique,
             ADD UNIQUE INDEX sendportal_messages_hash_unique (hash, source_id),
             DROP PRIMARY KEY,
-            ADD PRIMARY KEY (id, source_id),
+            ADD PRIMARY KEY (id, source_id)');
+
+        DB::statement('ALTER TABLE sendportal_messages
             PARTITION BY HASH(source_id) PARTITIONS 50');
     }
 
