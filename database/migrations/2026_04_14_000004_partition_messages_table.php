@@ -16,6 +16,8 @@ class PartitionMessagesTable extends Migration
             return;
         }
 
+        DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+
         Schema::drop('sendportal_messages');
 
         Schema::create('sendportal_messages', function (\Illuminate\Database\Schema\Blueprint $table) {
@@ -54,10 +56,14 @@ class PartitionMessagesTable extends Migration
 
         DB::statement('ALTER TABLE sendportal_messages
             PARTITION BY HASH(source_id) PARTITIONS 50');
+
+        DB::statement('SET FOREIGN_KEY_CHECKS = 1');
     }
 
     public function down(): void
     {
+        DB::statement('SET FOREIGN_KEY_CHECKS = 0');
+
         Schema::drop('sendportal_messages');
 
         Schema::create('sendportal_messages', function ($table) {
@@ -85,5 +91,7 @@ class PartitionMessagesTable extends Migration
             $table->timestamp('clicked_at')->nullable()->default(null)->index();
             $table->timestamps();
         });
+
+        DB::statement('SET FOREIGN_KEY_CHECKS = 1');
     }
 }
