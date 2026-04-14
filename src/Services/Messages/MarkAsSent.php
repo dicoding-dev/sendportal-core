@@ -3,6 +3,7 @@
 namespace Sendportal\Base\Services\Messages;
 
 use Sendportal\Base\Models\Message;
+use Sendportal\Base\Models\MessageLookup;
 
 class MarkAsSent
 {
@@ -14,6 +15,14 @@ class MarkAsSent
         $message->message_id = $messageId;
         $message->sent_at = now();
 
-        return tap($message)->save();
+        tap($message)->save();
+
+        MessageLookup::create([
+            'message_id' => $messageId,
+            'source_id' => $message->source_id,
+            'hash' => $message->hash,
+        ]);
+
+        return $message;
     }
 }
