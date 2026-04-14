@@ -10,7 +10,6 @@ class DropIdFromTagSubscriber extends Migration
     {
         Schema::table('sendportal_tag_subscriber', function (Blueprint $table) {
             $table->dropColumn('id');
-            $table->dropIndex('idx_tag_subscriber'); // redundant after PK change
             $table->primary(['tag_id', 'subscriber_id']);
         });
     }
@@ -20,7 +19,6 @@ class DropIdFromTagSubscriber extends Migration
         Schema::table('sendportal_tag_subscriber', function (Blueprint $table) {
             $table->dropPrimary(['tag_id', 'subscriber_id']);
             $table->increments('id')->first();
-            $table->index(['tag_id', 'subscriber_id'], 'idx_tag_subscriber');
         });
     }
 }
