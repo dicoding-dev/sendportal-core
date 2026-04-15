@@ -1,5 +1,26 @@
 # Sendportal Core
 
+## 4.0.1 - 2026-04-15
+
+### Added
+- Add `sendportal_message_lookup` table for partition-aware webhook queries
+- Add `MessageLookup` model
+- Add composite indexes on `sendportal_tag_subscriber` for covering queries
+- Add Makefile for running composer via Docker
+- Add partition messages and optimize tag subscriber documentation
+
+### Optimized
+- Partition `sendportal_messages` table by `HASH(source_id)` with 50 partitions
+- Resolve `source_id` from lookup table in webhook handlers for partition pruning
+- Resolve `source_id` from lookup table in subscriptions and webview controllers
+- Drop unused `id` column from `sendportal_tag_subscriber`, promote composite PK
+- Write to message lookup table on send for future webhook resolution
+
+### Fixed
+- Fix foreign key constraint when dropping index on `sendportal_tag_subscriber`
+- Fix foreign key check during messages table partitioning migration
+- Fix MariaDB compatibility: split `ALTER` and `PARTITION BY` into separate statements
+
 ## 4.0.0 - 2025-10-28
 
 ### Added
