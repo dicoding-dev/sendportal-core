@@ -2,8 +2,10 @@
 
 namespace Sendportal\Base\Pipelines\Campaigns;
 
+use Illuminate\Support\Facades\DB;
 use Sendportal\Base\Events\MessageDispatchEvent;
 use Sendportal\Base\Models\Campaign;
+use Sendportal\Base\Models\CampaignStat;
 use Sendportal\Base\Models\Message;
 use Sendportal\Base\Models\Subscriber;
 use Sendportal\Base\Models\Tag;
@@ -27,6 +29,8 @@ class CreateMessages
      */
     public function handle(Campaign $campaign, $next)
     {
+        CampaignStat::firstOrCreate(['campaign_id' => $campaign->id]);
+
         if ($campaign->send_to_all) {
             $this->handleAllSubscribers($campaign);
         } else {
@@ -90,12 +94,24 @@ class CreateMessages
     {
         \Log::info('- Number of subscribers in this chunk: ' . count($subscribers));
 
+        $created = 0;
+
         foreach ($subscribers as $subscriber) {
             if (! $this->canSendToSubscriber($campaign->id, $subscriber->id)) {
                 continue;
             }
 
-            $this->dispatch($campaign, $subscriber);
+            if ($this->dispatch($campaign, $subscriber)) {
+                $created++;
+            }
+        }
+
+        if ($created > 0) {
+            CampaignStat::where('campaign_id', $campaign->id)
+                ->update([
+                    'total' => DB::raw("total + {$created}"),
+                    'pending' => DB::raw("pending + {$created}"),
+                ]);
         }
     }
 
@@ -139,14 +155,15 @@ class CreateMessages
      *
      * @param Campaign $campaign
      * @param Subscriber $subscriber
+     * @return bool Whether a new message was created
      */
-    protected function dispatch(Campaign $campaign, Subscriber $subscriber): void
+    protected function dispatch(Campaign $campaign, Subscriber $subscriber): bool
     {
         if ($campaign->save_as_draft) {
-            $this->saveAsDraft($campaign, $subscriber);
-        } else {
-            $this->dispatchNow($campaign, $subscriber);
+            return $this->saveAsDraft($campaign, $subscriber);
         }
+
+        return $this->dispatchNow($campaign, $subscriber);
     }
 
     /**
@@ -154,18 +171,18 @@ class CreateMessages
      *
      * @param Campaign $campaign
      * @param Subscriber $subscriber
-     * @return Message
+     * @return bool Whether a new message was created
      */
-    protected function dispatchNow(Campaign $campaign, Subscriber $subscriber): Message
+    protected function dispatchNow(Campaign $campaign, Subscriber $subscriber): bool
     {
         // If a message already exists, then we're going to assume that
         // it has already been dispatched. This makes the dispatch fault-tolerant
         // and prevent dispatching the same message to the same subscriber
         // more than once
-        if ($message = $this->findMessage($campaign, $subscriber)) {
+        if ($this->findMessage($campaign, $subscriber)) {
             \Log::info('Message has previously been created campaign=' . $campaign->id . ' subscriber=' . $subscriber->id);
 
-            return $message;
+            return false;
         }
 
         // the message doesn't exist, so we'll create and dispatch
@@ -188,18 +205,19 @@ class CreateMessages
 
         event(new MessageDispatchEvent($message));
 
-        return $message;
+        return true;
     }
 
     /**
      * @param Campaign $campaign
      * @param Subscriber $subscriber
+     * @return bool Whether a new message was created
      */
-    protected function saveAsDraft(Campaign $campaign, Subscriber $subscriber)
+    protected function saveAsDraft(Campaign $campaign, Subscriber $subscriber): bool
     {
         \Log::info('Saving message as draft campaign=' . $campaign->id . ' subscriber=' . $subscriber->id);
 
-        Message::firstOrCreate(
+        $message = Message::firstOrCreate(
             [
                 'workspace_id' => $campaign->workspace_id,
                 'subscriber_id' => $subscriber->id,
@@ -215,6 +233,8 @@ class CreateMessages
                 'sent_at' => null,
             ]
         );
+
+        return $message->wasRecentlyCreated;
     }
 
     protected function findMessage(Campaign $campaign, Subscriber $subscriber): ?Message
