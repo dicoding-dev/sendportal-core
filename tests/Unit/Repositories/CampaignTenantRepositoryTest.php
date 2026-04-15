@@ -7,6 +7,7 @@ namespace Tests\Unit\Repositories;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Sendportal\Base\Facades\Sendportal;
 use Sendportal\Base\Models\Campaign;
+use Sendportal\Base\Models\CampaignStat;
 use Sendportal\Base\Models\CampaignStatus;
 use Sendportal\Base\Models\EmailService;
 use Sendportal\Base\Models\Message;
@@ -190,15 +191,25 @@ class CampaignTenantRepositoryTest extends TestCase
         $this->createBouncedMessages($campaign, $expectedBouncedMessages);
         $this->createPendingMessages($campaign, $expectedPendingMessages);
 
-        // when
-        $counts = $this->campaignRepository->getCounts(collect($campaign->id), Sendportal::currentWorkspaceId());
-
-        // then
         $totalSentCount = $expectedOpenedMessages
             + $expectedClickedMessages
             + $expectedUnopenedMessages
             + $expectedBouncedMessages;
 
+        CampaignStat::create([
+            'campaign_id' => $campaign->id,
+            'total' => $totalSentCount + $expectedPendingMessages,
+            'sent' => $totalSentCount,
+            'opened' => $expectedOpenedMessages,
+            'clicked' => $expectedClickedMessages,
+            'bounced' => $expectedBouncedMessages,
+            'pending' => $expectedPendingMessages,
+        ]);
+
+        // when
+        $counts = $this->campaignRepository->getCounts(collect($campaign->id), Sendportal::currentWorkspaceId());
+
+        // then
         static::assertEquals($expectedOpenedMessages, $counts[$campaign->id]->opened);
         static::assertEquals($expectedClickedMessages, $counts[$campaign->id]->clicked);
         static::assertEquals($totalSentCount, $counts[$campaign->id]->sent);
