@@ -7,6 +7,7 @@ namespace Sendportal\Base\Services\Webhooks;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use RuntimeException;
 use Sendportal\Base\Facades\Helper;
@@ -65,6 +66,10 @@ class EmailWebhookService
         ++$message->open_count;
         $message->save();
 
+        if ($message->isCampaign()) {
+            Redis::sadd('sp:stats:dirty', $message->source_id);
+        }
+
         // @todo not sure that this give much value? We can just derive the count from the messages table.
         if ($message->isAutomation()) {
             $automationStep = $this->resolveAutomationStepFromMessage($message);
@@ -108,6 +113,10 @@ class EmailWebhookService
 
         ++$message->click_count;
         $message->save();
+
+        if ($message->isCampaign()) {
+            Redis::sadd('sp:stats:dirty', $message->source_id);
+        }
 
         // @todo not sure that this give much value? We can just derive the count/ from the messages table.
         if ($message->isAutomation()) {
@@ -173,6 +182,10 @@ class EmailWebhookService
         if (! $message->bounced_at) {
             $message->bounced_at = $timestamp;
             $message->save();
+        }
+
+        if ($message->isCampaign()) {
+            Redis::sadd('sp:stats:dirty', $message->source_id);
         }
 
         $this->unsubscribe($messageId, UnsubscribeEventType::BOUNCE);
