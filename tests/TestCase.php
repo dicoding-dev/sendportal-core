@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests;
 
+use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
 use Orchestra\Testbench\TestCase as BaseTestCase;
 use Sendportal\Base\SendportalBaseServiceProvider;
@@ -35,6 +36,7 @@ abstract class TestCase extends BaseTestCase
         $this->withoutMix();
         $this->withExceptionHandling();
         $this->mockRelayMessageService();
+        Redis::fake();
 
         $this->artisan('migrate')->run();
     }

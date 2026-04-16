@@ -5,7 +5,9 @@ namespace Sendportal\Base;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\ServiceProvider;
+use Sendportal\Base\Console\Commands\BackfillCampaignStats;
 use Sendportal\Base\Console\Commands\CampaignDispatchCommand;
+use Sendportal\Base\Console\Commands\CampaignStatsDigest;
 use Sendportal\Base\Providers\EventServiceProvider;
 use Sendportal\Base\Providers\FormServiceProvider;
 use Sendportal\Base\Providers\ResolverProvider;
@@ -39,11 +41,16 @@ class SendportalBaseServiceProvider extends ServiceProvider
 
             $this->commands([
                 CampaignDispatchCommand::class,
+                BackfillCampaignStats::class,
+                CampaignStatsDigest::class,
             ]);
 
             $this->app->booted(function () {
                 $schedule = $this->app->make(Schedule::class);
                 $schedule->command(CampaignDispatchCommand::class)->everyMinute()->withoutOverlapping();
+                $schedule->command(CampaignStatsDigest::class)
+                    ->cron('*/' . config('sendportal.stats.digest_interval', 15) . ' * * * *')
+                    ->withoutOverlapping();
             });
         }
 

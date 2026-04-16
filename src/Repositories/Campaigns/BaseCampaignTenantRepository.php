@@ -10,6 +10,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Sendportal\Base\Models\Campaign;
+use Sendportal\Base\Models\CampaignStat;
 use Sendportal\Base\Models\CampaignStatus;
 use Sendportal\Base\Models\Tag;
 use Sendportal\Base\Repositories\BaseTenantRepository;
@@ -40,32 +41,26 @@ abstract class BaseCampaignTenantRepository extends BaseTenantRepository impleme
      */
     public function getCounts(Collection $campaignIds, int $workspaceId): array
     {
-        return cache()->remember(
-            'sendportal_campaigns_counts:v2:'.$campaignIds->implode(','),
-            60,
-            function () use ($campaignIds) {
-                $counts = DB::table('sendportal_campaigns')
-                    ->leftJoin('sendportal_messages', function ($join) {
-                        $join->on('sendportal_messages.source_id', '=', 'sendportal_campaigns.id')
-                            ->where('sendportal_messages.source_type', Campaign::class);
-                    })
-                    ->whereIn('sendportal_campaigns.id', $campaignIds)
-                    ->select('sendportal_campaigns.id as campaign_id')
-                    ->selectRaw('COUNT(sendportal_messages.id) as total')
-                    ->selectRaw('SUM(CASE WHEN sendportal_messages.opened_at IS NOT NULL THEN 1 ELSE 0 END) as opened')
-                    ->selectRaw('SUM(CASE WHEN sendportal_messages.clicked_at IS NOT NULL THEN 1 ELSE 0 END) as clicked')
-                    ->selectRaw('SUM(CASE WHEN sendportal_messages.sent_at IS NOT NULL THEN 1 ELSE 0 END) as sent')
-                    ->selectRaw('SUM(CASE WHEN sendportal_messages.bounced_at IS NOT NULL THEN 1 ELSE 0 END) as bounced')
-                    ->selectRaw('SUM(CASE WHEN sendportal_messages.sent_at IS NULL THEN 1 ELSE 0 END) as pending')
-                    ->groupBy('sendportal_campaigns.id')
-                    ->get();
+        $stats = CampaignStat::whereIn('campaign_id', $campaignIds)
+            ->get()
+            ->keyBy('campaign_id');
 
-                return $counts->flatten()
-                    ->keyBy('campaign_id')
-                    ->sortKeys()
-                    ->toArray();
+        // Ensure every requested campaign has a stats entry
+        foreach ($campaignIds as $id) {
+            if (! $stats->has($id)) {
+                $stats[$id] = new CampaignStat([
+                    'campaign_id' => $id,
+                    'total' => 0,
+                    'sent' => 0,
+                    'opened' => 0,
+                    'clicked' => 0,
+                    'bounced' => 0,
+                    'pending' => 0,
+                ]);
             }
-        );
+        }
+
+        return $stats->sortKeys()->all();
     }
 
     /**
@@ -86,7 +81,18 @@ abstract class BaseCampaignTenantRepository extends BaseTenantRepository impleme
             return;
         }
 
-        $campaign->messages()->whereNull('sent_at')->delete();
+        DB::transaction(function () use ($campaign) {
+            $pendingCount = $campaign->messages()->whereNull('sent_at')->count();
+            $campaign->messages()->whereNull('sent_at')->delete();
+
+            if ($pendingCount > 0) {
+                CampaignStat::where('campaign_id', $campaign->id)
+                    ->update([
+                        'total' => DB::raw("total - {$pendingCount}"),
+                        'pending' => DB::raw("pending - {$pendingCount}"),
+                    ]);
+            }
+        });
     }
 
     /**
