@@ -41,9 +41,10 @@ class EmailWebhookService
     }
 
     /**
-     * @throws Exception
+     * Find a message by its external message_id, using the lookup table
+     * for partition-pruned queries when available.
      */
-    public function handleOpen(string $messageId, Carbon $timestamp, ?string $ipAddress): void
+    protected function resolveMessage(string $messageId): ?Message
     {
         $query = Message::where('message_id', $messageId);
 
@@ -51,8 +52,15 @@ class EmailWebhookService
             $query->where('source_id', $sourceId);
         }
 
-        /** @var Message $message */
-        $message = $query->first();
+        return $query->first();
+    }
+
+    /**
+     * @throws Exception
+     */
+    public function handleOpen(string $messageId, Carbon $timestamp, ?string $ipAddress): void
+    {
+        $message = $this->resolveMessage($messageId);
 
         if (! $message) {
             return;
@@ -82,14 +90,7 @@ class EmailWebhookService
      */
     public function handleClick(string $messageId, Carbon $timestamp, ?string $url): void
     {
-        $query = Message::where('message_id', $messageId);
-
-        if ($sourceId = $this->resolveSourceId($messageId)) {
-            $query->where('source_id', $sourceId);
-        }
-
-        /* @var Message $message */
-        $message = $query->first();
+        $message = $this->resolveMessage($messageId);
 
         if (! $message) {
             return;
@@ -124,6 +125,11 @@ class EmailWebhookService
             DB::table('sendportal_automation_steps')->where('id', $automationStep->id)->increment('click_count');
         }
 
+        $this->recordClickUrl($message, $url);
+    }
+
+    protected function recordClickUrl(Message $message, string $url): void
+    {
         $messageUrlHash = $this->generateMessageUrlHash($message, $url);
 
         if ($messageUrl = MessageUrl::where('hash', $messageUrlHash)->first()) {
@@ -143,14 +149,7 @@ class EmailWebhookService
 
     public function handleComplaint(string $messageId, Carbon $timestamp): void
     {
-        $query = Message::where('message_id', $messageId);
-
-        if ($sourceId = $this->resolveSourceId($messageId)) {
-            $query->where('source_id', $sourceId);
-        }
-
-        /* @var Message $message */
-        $message = $query->first();
+        $message = $this->resolveMessage($messageId);
 
         if (! $message) {
             return;
@@ -166,14 +165,7 @@ class EmailWebhookService
 
     public function handlePermanentBounce($messageId, $timestamp): void
     {
-        $query = Message::where('message_id', $messageId);
-
-        if ($sourceId = $this->resolveSourceId($messageId)) {
-            $query->where('source_id', $sourceId);
-        }
-
-        /* @var Message $message */
-        $message = $query->first();
+        $message = $this->resolveMessage($messageId);
 
         if (! $message) {
             return;
@@ -193,14 +185,7 @@ class EmailWebhookService
 
     public function handleFailure($messageId, $severity, $description, $timestamp): void
     {
-        $query = Message::where('message_id', $messageId);
-
-        if ($sourceId = $this->resolveSourceId($messageId)) {
-            $query->where('source_id', $sourceId);
-        }
-
-        /* @var Message $message */
-        $message = $query->first();
+        $message = $this->resolveMessage($messageId);
 
         if (! $message) {
             return;
