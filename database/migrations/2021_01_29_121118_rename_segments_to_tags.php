@@ -28,16 +28,12 @@ class RenameSegmentsToTags extends Migration
                 $table->dropForeign('segment_subscriber_segment_id_foreign');
             }
 
-            if (in_array('sendportal_segment_subscriber_subscriber_id_foreign', $foreignKeys, true)) {
-                $table->dropForeign('sendportal_segment_subscriber_subscriber_id_foreign');
-            }
-
             $table->renameColumn('segment_id', 'tag_id');
+
+            $table->renameIndex('sendportal_segment_subscriber_subscriber_id_index', 'sendportal_tag_subscriber_subscriber_id_index');
 
             $table->foreign('tag_id', 'sendportal_tag_subscriber_tag_id_index')
                 ->references('id')->on('sendportal_tags');
-            $table->foreign('subscriber_id', 'sendportal_tag_subscriber_subscriber_id_foreign')
-                ->references('id')->on('sendportal_subscribers');
         });
 
         Schema::rename("sendportal_segment_subscriber", "sendportal_tag_subscriber");
@@ -51,16 +47,11 @@ class RenameSegmentsToTags extends Migration
                 $table->dropForeign('campaign_segment_segment_id_foreign');
             }
 
-            if (in_array('sendportal_campaign_segment_campaign_id_foreign', $foreignKeys, true)) {
-                $table->dropForeign('sendportal_campaign_segment_campaign_id_foreign');
-            }
-
             $table->renameColumn('segment_id', 'tag_id');
 
-            $table->foreign('tag_id', 'sendportal_campaign_tag_tag_id_index')
-                ->references('id')->on('sendportal_tags');
-            $table->foreign('campaign_id', 'sendportal_campaign_tag_campaign_id_foreign')
-                ->references('id')->on('sendportal_campaigns');
+            $table->renameIndex('sendportal_campaign_segment_campaign_id_index', 'sendportal_campaign_tag_campaign_id_index');
+
+            $table->foreign('tag_id', 'sendportal_campaign_tag_tag_id_index')->references('id')->on('sendportal_tags');
         });
 
         Schema::rename("sendportal_campaign_segment", "sendportal_campaign_tag");
