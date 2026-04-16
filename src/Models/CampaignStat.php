@@ -14,7 +14,7 @@ class CampaignStat extends Model
 
     public $incrementing = false;
 
-    const CREATED_AT = null;
+    public $timestamps = false;
 
     protected $fillable = [
         'campaign_id',
