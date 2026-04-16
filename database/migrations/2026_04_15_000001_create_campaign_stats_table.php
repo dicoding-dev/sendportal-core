@@ -17,6 +17,7 @@ class CreateCampaignStatsTable extends Migration
             $table->unsignedInteger('bounced')->default(0);
             $table->unsignedInteger('pending')->default(0);
             $table->timestamp('stats_frozen_at')->nullable();
+            $table->timestamp('created_at')->nullable();
             $table->timestamp('updated_at')->nullable();
         });
     }

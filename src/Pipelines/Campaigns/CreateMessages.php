@@ -29,7 +29,7 @@ class CreateMessages
      */
     public function handle(Campaign $campaign, $next)
     {
-        CampaignStat::firstOrCreate(['campaign_id' => $campaign->id]);
+        CampaignStat::upsertStats($campaign->id, [], $campaign->created_at);
 
         if ($campaign->send_to_all) {
             $this->handleAllSubscribers($campaign);

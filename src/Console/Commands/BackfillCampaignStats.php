@@ -26,6 +26,10 @@ class BackfillCampaignStats extends Command
 
         $this->info("Found {$campaignIds->count()} campaigns to backfill.");
 
+        $campaigns = DB::table('sendportal_campaigns')
+            ->whereIn('id', $campaignIds)
+            ->pluck('created_at', 'id');
+
         $bar = $this->output->createProgressBar($campaignIds->count());
 
         foreach ($campaignIds->chunk($chunkSize) as $batch) {
@@ -45,16 +49,10 @@ class BackfillCampaignStats extends Command
                 ->get();
 
             foreach ($counts as $row) {
-                CampaignStat::updateOrCreate(
-                    ['campaign_id' => $row->campaign_id],
-                    [
-                        'total' => $row->total,
-                        'sent' => $row->sent,
-                        'opened' => $row->opened,
-                        'clicked' => $row->clicked,
-                        'bounced' => $row->bounced,
-                        'pending' => $row->pending,
-                    ]
+                CampaignStat::upsertStats(
+                    $row->campaign_id,
+                    (array) $row,
+                    $campaigns[$row->campaign_id] ?? null
                 );
             }
 
