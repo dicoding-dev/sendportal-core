@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -49,13 +50,20 @@ class PartitionMessagesTable extends Migration
         // Adjust PK and unique index for partition key.
         // Laravel Schema builder does not support PARTITION BY.
         DB::statement('ALTER TABLE sendportal_messages
-            DROP INDEX sendportal_messages_hash_unique,
             ADD UNIQUE INDEX sendportal_messages_hash_unique (hash, source_id),
             DROP PRIMARY KEY,
             ADD PRIMARY KEY (id, source_id)');
 
+        Schema::table('sendportal_message_failures', function (Blueprint $table) {
+            $table->dropForeign(['message_id']);
+        });
+
         DB::statement('ALTER TABLE sendportal_messages
             PARTITION BY HASH(source_id) PARTITIONS 50');
+
+        Schema::table('sendportal_message_failures', function (Blueprint $table) {
+            $table->foreign('message_id')->references('id')->on('sendportal_messages');
+        });
 
         DB::statement('SET FOREIGN_KEY_CHECKS = 1');
     }
