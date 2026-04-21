@@ -105,6 +105,7 @@ class SubscribersController extends Controller
         // Get all emails first to fetch existing subscribers
         $emails = $requestedSubscribers->pluck('email')->all();
         $existingSubscribers = DB::table('sendportal_subscribers')
+            ->where('workspace_id', $workspaceId)
             ->whereIn('email', $emails)
             ->get(['id', 'email']);
 
