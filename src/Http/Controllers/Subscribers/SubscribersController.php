@@ -154,13 +154,13 @@ class SubscribersController extends Controller
      */
     public function export()
     {
-        $subscribers = $this->subscriberRepo->all(Sendportal::currentWorkspaceId(), 'id');
+        $workspaceId = Sendportal::currentWorkspaceId();
 
-        if (! $subscribers->count()) {
+        if (! $this->subscriberRepo->countByWorkspace($workspaceId)) {
             return redirect()->route('sendportal.subscribers.index')->withErrors(__('There are no subscribers to export'));
         }
 
-        return (new FastExcel($subscribers))
+        return (new FastExcel($this->subscriberRepo->lazyAll($workspaceId)))
             ->download(sprintf('subscribers-%s.csv', date('Y-m-d-H-m-s')), static function ($subscriber) {
                 return [
                     'id' => $subscriber->id,
