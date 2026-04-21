@@ -109,12 +109,12 @@ abstract class BaseSubscriberTenantRepository extends BaseTenantRepository imple
     protected function applyNameFilter(Builder $instance, array $filters): void
     {
         if ($name = Arr::get($filters, 'name')) {
-            $filterString = '%' . $name . '%';
+            $filterString = $name;
 
             $instance->where(static function (Builder $instance) use ($filterString) {
-                $instance->where('sendportal_subscribers.first_name', 'like', $filterString)
-                    ->orWhere('sendportal_subscribers.last_name', 'like', $filterString)
-                    ->orWhere('sendportal_subscribers.email', 'like', $filterString);
+                $instance->where('sendportal_subscribers.first_name', 'like', $filterString . '%')
+                    ->orWhere('sendportal_subscribers.last_name', 'like', '%' . $filterString)
+                    ->orWhere('sendportal_subscribers.email', 'like', $filterString . '%');
             });
         }
     }
