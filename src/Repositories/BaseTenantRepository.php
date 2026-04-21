@@ -4,6 +4,7 @@ namespace Sendportal\Base\Repositories;
 
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\LazyCollection;
 use RuntimeException;
 use Sendportal\Base\Interfaces\BaseTenantInterface;
 
@@ -39,6 +40,23 @@ abstract class BaseTenantRepository implements BaseTenantInterface
      * @var string
      */
     private $orderDirection = 'asc';
+
+    /**
+     * Stream all records for a workspace in memory-safe chunks via lazyById.
+     * Returns a LazyCollection — compatible with FastExcel and foreach loops.
+     */
+    public function lazyAll(int $workspaceId, int $chunkSize = 1000): LazyCollection
+    {
+        return $this->getQueryBuilder($workspaceId)->lazyById($chunkSize);
+    }
+
+    /**
+     * Count all records for a workspace without loading them into memory.
+     */
+    public function countByWorkspace(int $workspaceId): int
+    {
+        return $this->getQueryBuilder($workspaceId)->count();
+    }
 
     /**
      * Return all records
