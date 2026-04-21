@@ -38,7 +38,7 @@ with exact file references.
 
 ---
 
-#### 2.1 Missing `workspace_id` filter in bulk sync (security + correctness)
+#### 2.1 Missing `workspace_id` filter in bulk sync (security + correctness) [Done]
 
 **File:** `sendportal-core/src/Http/Controllers/Api/SubscribersController.php:107`
 
@@ -81,7 +81,7 @@ Or chunk the output with `chunkById()` and stream the response incrementally.
 
 ---
 
-#### 2.3 Full-wildcard `LIKE` search — guaranteed full table scan
+#### 2.3 Full-wildcard `LIKE` search — guaranteed full table scan [Done]
 
 **File:** `sendportal-core/src/Repositories/Subscribers/BaseSubscriberTenantRepository.php:115-118`
 
@@ -109,7 +109,38 @@ Every search request forces a full scan of the subscribers table.
 
 ---
 
-#### 2.4 N+1 queries in CSV import loop
+#### 2.4 Unbounded `->get()` on subscriber sync result
+
+**File:** `sendportal-core/src/Http/Controllers/Api/SubscribersController.php:160–164`
+
+```php
+// CURRENT — loads all matched subscribers into memory after bulk sync
+$subscribers = DB::table('sendportal_subscribers')
+    ->where('workspace_id', $workspaceId)
+    ->whereIn('email', $emails)
+    ->orderBy('id')
+    ->get(['id', 'email', 'first_name', 'last_name', 'unsubscribed_at', 'unsubscribe_event_id']);
+```
+
+Called after every bulk sync request. A sync payload of 50k emails pulls the entire
+matched set into a single PHP collection, causing a proportional memory spike.
+This is separate from the missing `workspace_id` issue at line 107 (§2.1).
+
+**Fix:** Stream the result instead of buffering it:
+```php
+DB::table('sendportal_subscribers')
+    ->where('workspace_id', $workspaceId)
+    ->whereIn('email', $emails)
+    ->orderBy('id')
+    ->lazyById()
+    ->each(function ($subscriber) use (&$result) {
+        $result[] = $subscriber;
+    });
+```
+
+---
+
+#### 2.5 N+1 queries in CSV import loop
 
 **File:** `sendportal-core/src/Services/Subscribers/ImportSubscriberService.php:28-43`
 
@@ -235,6 +266,81 @@ A tag with 100,000 subscribers returns all rows in a single response.
 
 ---
 
+#### 2.9 Tag → subscriber N+1 during campaign dispatch
+
+**File:** `sendportal-core/src/Pipelines/Campaigns/CreateMessages.php:78–80`
+
+```php
+foreach ($campaign->tags as $tag) {
+    $tag->subscribers()->whereNull('unsubscribed_at')->chunkById(1000, ...);
+}
+```
+
+Although `$campaign->tags` is eager-loaded via `Campaign::with('tags')`, each
+`$tag->subscribers()` fires a **new query per tag**. A campaign targeting 10 tags
+opens 10 separate subscriber queries before chunking begins. Subscribers assigned to
+multiple tags are also scanned multiple times across those queries.
+
+**Fix:** Merge all tag-subscriber lookups into a single query and chunk once:
+```php
+$campaign->subscribers()
+    ->whereNull('unsubscribed_at')
+    ->distinct()
+    ->chunkById(1000, fn($subscribers) => $this->dispatchToSubscriber($campaign, $subscribers));
+```
+
+---
+
+#### 2.10 Broken deduplication — subscribers in overlapping tags receive duplicate emails
+
+**File:** `sendportal-core/src/Pipelines/Campaigns/CreateMessages.php:115 + 134`
+
+```php
+// canSendToSubscriber() — checks by key
+if (in_array($key, $this->sentItems, true)) { ... }
+
+// appendSentItem() — stores by numeric index
+$this->sentItems[] = $value;
+```
+
+The check uses `in_array($key, ...)` (value search) while the append stores values
+at numeric indexes `[0, 1, 2, ...]`. This is a working pair — `in_array` scans values,
+not keys — but it degrades to **O(n) per check**, making the full deduplication pass
+**O(n²)** for large subscriber lists. At 200k subscribers with 1000-row chunks,
+the growing array search becomes the dominant bottleneck.
+
+A subscriber assigned to multiple tags will be checked `n` times across tag loops,
+compounding the cost further.
+
+**Fix:** Store by key for O(1) lookups — requires changing both lines together:
+```php
+// canSendToSubscriber()
+if (isset($this->sentItems[$key])) { ... }
+
+// appendSentItem()
+$this->sentItems[$value] = true;
+```
+
+---
+
+#### 2.11 `$message->subscriber` lazy-loaded 200k times during dispatch
+
+**File:** `sendportal-core/src/Services/Messages/DispatchMessage.php`
+
+`Message` records are created in `CreateMessages` with no subscriber relationship
+loaded. When the queued dispatch job later accesses `$message->subscriber` (for merge
+tags, List-Unsubscribe headers, etc.), Eloquent fires a lazy-load query per message.
+
+Across 200k queued messages processed by multiple workers, this generates
+**200k individual `SELECT … FROM sendportal_subscribers WHERE id = ?` queries**
+with no batching.
+
+**Fix:** Eager-load the subscriber when fetching messages for dispatch, or embed the
+required subscriber fields (`first_name`, `last_name`, `email`) directly on the
+`sendportal_messages` row at creation time so dispatch jobs need no subscriber lookup.
+
+---
+
 ## 3. Improvement Plan (Prioritised)
 
 | # | Priority | Issue | File | Action |
@@ -242,8 +348,12 @@ A tag with 100,000 subscribers returns all rows in a single response.
 | 1 | P0 | Missing `workspace_id` in sync | `Api/SubscribersController.php:107` | Add `.where('workspace_id', $workspaceId)` |
 | 2 | P0 | Unbounded export `->get()` | `Subscribers/SubscribersController.php:157` | Replace with cursor/chunked streaming |
 | 3 | P0 | Full-wildcard LIKE search | `BaseSubscriberTenantRepository.php:115` | Prefix search or FULLTEXT index |
-| 4 | P1 | N+1 in import loop | `ImportSubscriberService.php:28` | Batch fetch before loop |
-| 5 | P1 | Missing composite indexes | DB schema | New migration with 4 composite indexes |
-| 6 | P1 | Duplicate tag query in `edit()` | `Subscribers/SubscribersController.php:102` | Use already-loaded relationship |
-| 7 | P2 | `GROUP BY` on timestamp function | `MySqlSubscriberTenantRepository.php:26,34` | Use `DATE()` + generated column index |
-| 8 | P2 | No pagination on relationship endpoints | `Api/TagSubscribersController.php:40` | Add `paginate()` |
+| 4 | P1 | Unbounded `->get()` on sync result | `Api/SubscribersController.php:160` | Replace with `lazyById()` |
+| 5 | P1 | N+1 in import loop | `ImportSubscriberService.php:28` | Batch fetch before loop |
+| 6 | P1 | Missing composite indexes | DB schema | New migration with 4 composite indexes |
+| 7 | P1 | Duplicate tag query in `edit()` | `Subscribers/SubscribersController.php:102` | Use already-loaded relationship |
+| 8 | P1 | Tag → subscriber N+1 in dispatch | `CreateMessages.php:78` | Merge tag queries; chunk once via `$campaign->subscribers()` |
+| 9 | P1 | Broken O(n²) deduplication | `CreateMessages.php:115+134` | Change `appendSentItem` to store by key (`$this->sentItems[$value] = true`) |
+| 10 | P1 | Subscriber lazy-loaded per dispatch job | `DispatchMessage.php` | Eager-load subscriber or embed fields on message at creation |
+| 11 | P2 | `GROUP BY` on timestamp function | `MySqlSubscriberTenantRepository.php:26,34` | Use `DATE()` + generated column index |
+| 12 | P2 | No pagination on relationship endpoints | `Api/TagSubscribersController.php:40` | Add `paginate()` |
