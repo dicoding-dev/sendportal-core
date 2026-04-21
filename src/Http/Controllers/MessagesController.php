@@ -161,21 +161,18 @@ class MessagesController extends Controller
             return redirect()->back()->withErrors(__('No messages selected'));
         }
 
-        if (! $messages = $this->messageRepo->getWhereIn(
-            Sendportal::currentWorkspaceId(),
-            request('messages'),
-            ['subscriber']
-        )) {
-            return redirect()->back()->withErrors(__('Unable to locate messages'));
-        }
+        Message::where('workspace_id', Sendportal::currentWorkspaceId())
+            ->whereIn('id', request('messages'))
+            ->with(['subscriber', 'source'])
+            ->chunkById(100, function ($messages) {
+                foreach ($messages as $message) {
+                    if ($message->sent_at) {
+                        continue;
+                    }
 
-        $messages->each(function (Message $message) {
-            if ($message->sent_at) {
-                return;
-            }
-
-            $this->dispatchMessage->handle($message);
-        });
+                    $this->dispatchMessage->handle($message);
+                }
+            });
 
         return redirect()->route('sendportal.messages.draft')->with(
             'success',
