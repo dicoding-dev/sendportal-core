@@ -92,7 +92,7 @@ abstract class BaseTenantRepository implements BaseTenantInterface
      * @return mixed
      * @throws Exception
      */
-    public function paginate($workspaceId, $orderBy = 'name', array $relations = [], $paginate = 25, array $parameters = [])
+    public function paginate($workspaceId, $orderBy = 'name', array $relations = [], $paginate = 25, array $parameters = [], array $counts = [])
     {
         $instance = $this->getQueryBuilder($workspaceId);
 
@@ -101,6 +101,7 @@ abstract class BaseTenantRepository implements BaseTenantInterface
         $this->applyFilters($instance, $parameters);
 
         return $instance->with($relations)
+            ->withCount($counts)
             ->orderBy($this->getOrderBy(), $this->getOrderDirection())
             ->paginate($paginate);
     }

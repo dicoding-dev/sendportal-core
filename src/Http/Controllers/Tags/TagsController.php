@@ -28,7 +28,7 @@ class TagsController extends Controller
      */
     public function index(): View
     {
-        $tags = $this->tagRepository->paginate(Sendportal::currentWorkspaceId(), 'name');
+        $tags = $this->tagRepository->paginate(Sendportal::currentWorkspaceId(), 'name', [], 25, [], ['subscribers']);
 
         return view('sendportal::tags.index', compact('tags'));
     }
