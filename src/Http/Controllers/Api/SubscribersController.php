@@ -151,8 +151,10 @@ class SubscribersController extends Controller
             }
 
             // Update existing subscribers
-            $this->updateSubscribers(collect($toBeUpdated), $workspaceId);
-            unset($toBeUpdated);
+            if (!empty($toBeUpdated)) {
+                $this->updateSubscribers(collect($toBeUpdated), $workspaceId);
+                unset($toBeUpdated);
+            }
         });
 
         unset($requestedSubscribers, $existingSubscribers, $existingSubscribersIndex);
