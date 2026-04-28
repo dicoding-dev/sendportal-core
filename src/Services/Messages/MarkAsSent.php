@@ -2,6 +2,7 @@
 
 namespace Sendportal\Base\Services\Messages;
 
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Sendportal\Base\Models\Campaign;
 use Sendportal\Base\Models\CampaignStat;
@@ -20,18 +21,20 @@ class MarkAsSent
 
         tap($message)->save();
 
-        MessageLookup::create([
-            'message_id' => $messageId,
-            'source_id' => $message->source_id,
-            'hash' => $message->hash,
-        ]);
+        if (App::isProduction()) {
+            MessageLookup::create([
+                'message_id' => $messageId,
+                'source_id' => $message->source_id,
+                'hash' => $message->hash,
+            ]);
 
-        if ($message->source_type === Campaign::class) {
-            CampaignStat::where('campaign_id', $message->source_id)
-                ->update([
-                    'sent' => DB::raw('sent + 1'),
-                    'pending' => DB::raw('pending - 1'),
-                ]);
+            if ($message->source_type === Campaign::class) {
+                CampaignStat::where('campaign_id', $message->source_id)
+                    ->update([
+                        'sent' => DB::raw('sent + 1'),
+                        'pending' => DB::raw('pending - 1'),
+                    ]);
+            }
         }
 
         return $message;
