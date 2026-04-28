@@ -4,6 +4,7 @@ namespace Sendportal\Base\Repositories;
 
 use Exception;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\LazyCollection;
 use RuntimeException;
 use Sendportal\Base\Interfaces\BaseTenantInterface;
 
@@ -41,6 +42,23 @@ abstract class BaseTenantRepository implements BaseTenantInterface
     private $orderDirection = 'asc';
 
     /**
+     * Stream all records for a workspace in memory-safe chunks via lazyById.
+     * Returns a LazyCollection — compatible with FastExcel and foreach loops.
+     */
+    public function lazyAll(int $workspaceId, int $chunkSize = 1000): LazyCollection
+    {
+        return $this->getQueryBuilder($workspaceId)->lazyById($chunkSize);
+    }
+
+    /**
+     * Count all records for a workspace without loading them into memory.
+     */
+    public function countByWorkspace(int $workspaceId): int
+    {
+        return $this->getQueryBuilder($workspaceId)->count();
+    }
+
+    /**
      * Return all records
      *
      * @param int $workspaceId
@@ -74,7 +92,7 @@ abstract class BaseTenantRepository implements BaseTenantInterface
      * @return mixed
      * @throws Exception
      */
-    public function paginate($workspaceId, $orderBy = 'name', array $relations = [], $paginate = 25, array $parameters = [])
+    public function paginate($workspaceId, $orderBy = 'name', array $relations = [], $paginate = 25, array $parameters = [], array $counts = [])
     {
         $instance = $this->getQueryBuilder($workspaceId);
 
@@ -83,6 +101,7 @@ abstract class BaseTenantRepository implements BaseTenantInterface
         $this->applyFilters($instance, $parameters);
 
         return $instance->with($relations)
+            ->withCount($counts)
             ->orderBy($this->getOrderBy(), $this->getOrderDirection())
             ->paginate($paginate);
     }

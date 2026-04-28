@@ -6,7 +6,6 @@ namespace Sendportal\Base\Services\Messages;
 
 use Exception;
 use Illuminate\Support\Facades\Log;
-use Sendportal\Base\Models\Campaign;
 use Sendportal\Base\Models\CampaignStatus;
 use Sendportal\Base\Models\EmailService;
 use Sendportal\Base\Models\Message;
@@ -137,7 +136,7 @@ class DispatchMessage
             return true;
         }
 
-        $campaign = Campaign::find($message->source_id);
+        $campaign = $message->source;
 
         if (! $campaign) {
             return false;
