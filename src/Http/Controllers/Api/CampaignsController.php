@@ -76,9 +76,7 @@ class CampaignsController extends Controller
     public function showByName(string $name): CampaignResource
     {
         $workspaceId = Sendportal::currentWorkspaceId();
-        $campaign = $this->campaigns->findBy($workspaceId, 'name', $name);
-
-        return new CampaignResource($campaign);
+        return new CampaignResource($this->campaigns->findBy($workspaceId, 'name', $name));
     }
 
     /**
