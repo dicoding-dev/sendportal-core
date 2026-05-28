@@ -15,11 +15,13 @@ class ApiRoutes
                 $apiRouter->get('campaigns/stats', 'CampaignsController@stats')->name('campaigns.stats');
                 $apiRouter->post('campaigns/send-test', 'CampaignTestController@send')->name('campaigns.send-test');
                 $apiRouter->apiResource('campaigns', 'CampaignsController');
+                $apiRouter->get('campaigns/{campaign}', 'CampaignsController@showByName')->name('campaigns.show-by-name');
                 $apiRouter->post('campaigns/{id}/send', 'CampaignDispatchController@send')->name('campaigns.send');
 
                 $apiRouter->apiResource('subscribers', 'SubscribersController');
                 $apiRouter->post('subscribers/sync', 'SubscribersController@sync')->name('subscribers.sync');
                 $apiRouter->apiResource('tags', 'TagsController');
+                $apiRouter->get('tags/{tag}', 'TagsController@showByName')->name('tags.show-by-name');
 
                 $apiRouter->apiResource('subscribers.tags', 'SubscriberTagsController')
                     ->except(['show', 'update', 'destroy']);

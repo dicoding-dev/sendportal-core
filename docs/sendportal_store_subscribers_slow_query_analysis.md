@@ -38,7 +38,7 @@ with exact file references.
 
 ---
 
-#### 2.1 Missing `workspace_id` filter in bulk sync (security + correctness) [Done]
+#### 2.1 Missing `workspace_id` filter in bulk sync (security + correctness) ✅ Done
 
 **File:** `sendportal-core/src/Http/Controllers/Api/SubscribersController.php:107`
 
@@ -61,7 +61,7 @@ DB::table('sendportal_subscribers')
 
 ---
 
-#### 2.2 Unbounded `->get()` on full export
+#### 2.2 Unbounded `->get()` on full export ✅ Done
 
 **File:** `sendportal-core/src/Http/Controllers/Subscribers/SubscribersController.php:157`
 
@@ -81,19 +81,20 @@ Or chunk the output with `chunkById()` and stream the response incrementally.
 
 ---
 
-#### 2.3 Full-wildcard `LIKE` search — guaranteed full table scan [Done]
+#### 2.3 Full-wildcard `LIKE` search — guaranteed full table scan ⚠️ Partial
 
 **File:** `sendportal-core/src/Repositories/Subscribers/BaseSubscriberTenantRepository.php:115-118`
 
 ```php
-// CURRENT — leading % makes all three conditions non-sargable
-->where('first_name', 'LIKE', '%' . $name . '%')
-->orWhere('last_name',  'LIKE', '%' . $name . '%')
-->orWhere('email',      'LIKE', '%' . $name . '%')
+// CURRENT — first_name and email fixed; last_name still has a leading %
+->where('sendportal_subscribers.first_name', 'like', $filterString . '%')   // ✅ fixed
+->orWhere('sendportal_subscribers.last_name',  'like', '%' . $filterString) // ❌ still leading %
+->orWhere('sendportal_subscribers.email',      'like', $filterString . '%') // ✅ fixed
 ```
 
-A leading `%` wildcard prevents the query planner from using any index.
-Every search request forces a full scan of the subscribers table.
+`first_name` and `email` were changed to prefix search and can use their indexes.
+`last_name` still has a leading `%` wildcard — the query planner cannot use any index on
+that column and falls back to a full table scan on every search request.
 
 **Fix options (choose one based on requirements):**
 
@@ -109,7 +110,7 @@ Every search request forces a full scan of the subscribers table.
 
 ---
 
-#### 2.4 Unbounded `->get()` on subscriber sync result
+#### 2.4 Unbounded `->get()` on subscriber sync result ❌ Not Done
 
 **File:** `sendportal-core/src/Http/Controllers/Api/SubscribersController.php:160–164`
 
@@ -140,7 +141,7 @@ DB::table('sendportal_subscribers')
 
 ---
 
-#### 2.5 N+1 queries in CSV import loop
+#### 2.5 N+1 queries in CSV import loop ❌ Not Done
 
 **File:** `sendportal-core/src/Services/Subscribers/ImportSubscriberService.php:28-43`
 
@@ -168,7 +169,7 @@ foreach ($rows as $row) {
 
 ---
 
-#### 2.5 Missing composite indexes
+#### 2.5 Missing composite indexes ❌ Not Done
 
 MySQL cannot combine two separate single-column indexes for a multi-column `WHERE` clause.
 All of the queries below currently cause MySQL to pick one index and filter the rest in memory.
@@ -205,7 +206,7 @@ ALTER TABLE sendportal_subscribers
 
 ---
 
-#### 2.6 Duplicate tag query in `edit()` action
+#### 2.6 Duplicate tag query in `edit()` action ❌ Not Done
 
 **File:** `sendportal-core/src/Http/Controllers/Subscribers/SubscribersController.php:102`
 
@@ -229,7 +230,7 @@ $selectedTagIds = $subscriber->tags->pluck('id');
 
 ---
 
-#### 2.7 `GROUP BY` on a timestamp function bypasses index
+#### 2.7 `GROUP BY` on a timestamp function bypasses index ❌ Not Done
 
 **Files:**
 - `sendportal-core/src/Repositories/Subscribers/MySqlSubscriberTenantRepository.php:26,34`
@@ -253,7 +254,7 @@ ALTER TABLE sendportal_subscribers
 
 ---
 
-#### 2.8 No pagination on tag/subscriber relationship endpoints
+#### 2.8 No pagination on tag/subscriber relationship endpoints ❌ Not Done
 
 **Files:**
 - `sendportal-core/src/Http/Controllers/Api/TagSubscribersController.php:40`
@@ -266,7 +267,7 @@ A tag with 100,000 subscribers returns all rows in a single response.
 
 ---
 
-#### 2.9 Tag → subscriber N+1 during campaign dispatch
+#### 2.9 Tag → subscriber N+1 during campaign dispatch ❌ Not Done
 
 **File:** `sendportal-core/src/Pipelines/Campaigns/CreateMessages.php:78–80`
 
@@ -291,7 +292,7 @@ $campaign->subscribers()
 
 ---
 
-#### 2.10 Broken deduplication — subscribers in overlapping tags receive duplicate emails
+#### 2.10 Broken deduplication — subscribers in overlapping tags receive duplicate emails ❌ Not Done
 
 **File:** `sendportal-core/src/Pipelines/Campaigns/CreateMessages.php:115 + 134`
 
@@ -323,7 +324,7 @@ $this->sentItems[$value] = true;
 
 ---
 
-#### 2.11 `$message->subscriber` lazy-loaded 200k times during dispatch
+#### 2.11 `$message->subscriber` lazy-loaded 200k times during dispatch ❌ Not Done
 
 **File:** `sendportal-core/src/Services/Messages/DispatchMessage.php`
 
@@ -343,17 +344,17 @@ required subscriber fields (`first_name`, `last_name`, `email`) directly on the
 
 ## 3. Improvement Plan (Prioritised)
 
-| # | Priority | Issue | File | Action |
-|---|---|---|---|---|
-| 1 | P0 | Missing `workspace_id` in sync | `Api/SubscribersController.php:107` | Add `.where('workspace_id', $workspaceId)` |
-| 2 | P0 | Unbounded export `->get()` | `Subscribers/SubscribersController.php:157` | Replace with cursor/chunked streaming |
-| 3 | P0 | Full-wildcard LIKE search | `BaseSubscriberTenantRepository.php:115` | Prefix search or FULLTEXT index |
-| 4 | P1 | Unbounded `->get()` on sync result | `Api/SubscribersController.php:160` | Replace with `lazyById()` |
-| 5 | P1 | N+1 in import loop | `ImportSubscriberService.php:28` | Batch fetch before loop |
-| 6 | P1 | Missing composite indexes | DB schema | New migration with 4 composite indexes |
-| 7 | P1 | Duplicate tag query in `edit()` | `Subscribers/SubscribersController.php:102` | Use already-loaded relationship |
-| 8 | P1 | Tag → subscriber N+1 in dispatch | `CreateMessages.php:78` | Merge tag queries; chunk once via `$campaign->subscribers()` |
-| 9 | P1 | Broken O(n²) deduplication | `CreateMessages.php:115+134` | Change `appendSentItem` to store by key (`$this->sentItems[$value] = true`) |
-| 10 | P1 | Subscriber lazy-loaded per dispatch job | `DispatchMessage.php` | Eager-load subscriber or embed fields on message at creation |
-| 11 | P2 | `GROUP BY` on timestamp function | `MySqlSubscriberTenantRepository.php:26,34` | Use `DATE()` + generated column index |
-| 12 | P2 | No pagination on relationship endpoints | `Api/TagSubscribersController.php:40` | Add `paginate()` |
+| # | Priority | Status | Issue | File | Action |
+|---|---|---|---|---|---|
+| 1 | P0 | ✅ Done | Missing `workspace_id` in sync | `Api/SubscribersController.php:107` | Add `.where('workspace_id', $workspaceId)` |
+| 2 | P0 | ✅ Done | Unbounded export `->get()` | `Subscribers/SubscribersController.php:157` | Now uses `lazyAll()` via FastExcel streaming |
+| 3 | P0 | ⚠️ Partial | Full-wildcard LIKE search | `BaseSubscriberTenantRepository.php:116` | `first_name`/`email` fixed; `last_name` still has leading `%` |
+| 4 | P1 | ❌ Not Done | Unbounded `->get()` on sync result | `Api/SubscribersController.php:163` | Replace with `lazyById()` |
+| 5 | P1 | ❌ Not Done | N+1 in import loop | `ImportSubscriberService.php:28` | Batch fetch before loop |
+| 6 | P1 | ❌ Not Done | Missing composite indexes | DB schema | New migration with 4 composite indexes |
+| 7 | P1 | ❌ Not Done | Duplicate tag query in `edit()` | `Subscribers/SubscribersController.php:101` | Eager-load tags in `find()` call |
+| 8 | P1 | ❌ Not Done | Tag → subscriber N+1 in dispatch | `CreateMessages.php:82` | Merge tag queries; chunk once via `$campaign->subscribers()` |
+| 9 | P1 | ❌ Not Done | Broken O(n²) deduplication | `CreateMessages.php:131+150` | Change `appendSentItem` to store by key (`$this->sentItems[$value] = true`) |
+| 10 | P1 | ❌ Not Done | Subscriber lazy-loaded per dispatch job | `DispatchMessage.php:106` | Eager-load subscriber or embed fields on message at creation |
+| 11 | P2 | ❌ Not Done | `GROUP BY` on timestamp function | `MySqlSubscriberTenantRepository.php:26,34` | Use `DATE()` + generated column index |
+| 12 | P2 | ❌ Not Done | No pagination on relationship endpoints | `Api/TagSubscribersController.php:40` | Add `paginate()` |

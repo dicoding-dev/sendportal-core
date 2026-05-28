@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sendportal\Base\Http\Controllers\Api;
 
 use Exception;
+use Illuminate\Contracts\Container\BindingResolutionException;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Sendportal\Base\Facades\Sendportal;
@@ -67,6 +68,15 @@ class TagsController extends Controller
         $workspaceId = Sendportal::currentWorkspaceId();
 
         return new TagResource($this->tags->find($workspaceId, $id));
+    }
+
+    /**
+     * @throws BindingResolutionException
+     */
+    public function showByName(string $name): TagResource
+    {
+        $workspaceId = Sendportal::currentWorkspaceId();
+        return new TagResource($this->tags->findBy($workspaceId, 'name', $name));
     }
 
     /**
