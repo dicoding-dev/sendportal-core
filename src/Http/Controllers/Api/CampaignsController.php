@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Sendportal\Base\Http\Controllers\Api;
 
 use Exception;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Arr;
 use Sendportal\Base\Facades\Sendportal;
@@ -73,10 +74,16 @@ class CampaignsController extends Controller
     /**
      * @throws Exception
      */
-    public function showByName(string $name): CampaignResource
+    public function showByName(string $name): CampaignResource|JsonResponse
     {
         $workspaceId = Sendportal::currentWorkspaceId();
-        return new CampaignResource($this->campaigns->findBy($workspaceId, 'name', $name));
+
+        $campaign = $this->campaigns->findBy($workspaceId, 'name', $name);
+        if (!$campaign) {
+            return new JsonResponse(['message' => 'Campaign not found'], 404);
+        }
+
+        return new CampaignResource($campaign);
     }
 
     /**
