@@ -38,6 +38,8 @@ class ApiRoutes
                     ->name('tags.subscribers.destroy');
 
                 $apiRouter->apiResource('templates', 'TemplatesController');
+
+                $apiRouter->post('emails/send', 'EmailController@send')->name('emails.send');
             });
         };
     }
