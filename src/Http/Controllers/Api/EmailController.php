@@ -43,7 +43,6 @@ class EmailController extends Controller
 
         return response()->json([
             'message' => __('The email has been dispatched.'),
-            'data' => ['message_id' => $messageId],
         ]);
     }
 }

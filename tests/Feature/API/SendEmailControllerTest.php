@@ -30,10 +30,7 @@ class SendEmailControllerTest extends TestCase
 
         $this->postJson(route('sendportal.api.emails.send'), $payload)
             ->assertOk()
-            ->assertJsonStructure([
-                'message',
-                'data' => ['message_id'],
-            ]);
+            ->assertJsonStructure(['message']);
     }
 
     /** @test */
