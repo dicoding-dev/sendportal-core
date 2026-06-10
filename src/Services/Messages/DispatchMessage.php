@@ -72,6 +72,36 @@ class DispatchMessage
     }
 
     /**
+     * Dispatch a one-off email that is not tied to a campaign.
+     *
+     * The body is relayed to the provider as-is; only the subject is merged
+     * and tracking is disabled. Nothing is persisted and the message is not
+     * marked as sent.
+     *
+     * @throws Exception
+     */
+    public function handleWithoutCampaign(int $workspaceId, EmailService $emailService, MessageOptions $options): ?string
+    {
+        $message = new Message([
+            'workspace_id' => $workspaceId,
+            'recipient_email' => $options->getTo(),
+            'subject' => $options->getSubject(),
+            'from_name' => $options->getFromName(),
+            'from_email' => $options->getFromEmail(),
+        ]);
+
+        $options
+            ->setSubject($this->mergeSubjectService->handle($message))
+            ->setTrackingOptions((new MessageTrackingOptions())->disable());
+
+        $messageId = $this->relayMessage->handle($options->getBody(), $options, $emailService);
+
+        Log::info('Email has been dispatched.', ['message_id' => $messageId]);
+
+        return $messageId;
+    }
+
+    /**
      * The message's subject is merged and persisted to the database
      * so that we have a permanent record of the merged tags at the
      * time of dispatch.
