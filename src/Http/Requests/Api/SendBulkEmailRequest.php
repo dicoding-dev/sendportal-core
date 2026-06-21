@@ -26,7 +26,11 @@ class SendBulkEmailRequest extends FormRequest
             'emails' => [
                 'required',
                 'array',
-                'max:500',
+                'max:100',
+            ],
+            'emails.*.row' => [
+                'required',
+                'integer',
             ],
             'emails.*.recipient_email' => [
                 'required',
@@ -46,7 +50,8 @@ class SendBulkEmailRequest extends FormRequest
     {
         return [
             'emails.required' => __('At least one email is required.'),
-            'emails.max' => __('A maximum of 500 emails may be sent per request.'),
+            'emails.max' => __('A maximum of 100 emails may be sent per request.'),
+            'emails.*.row.required' => __('A row correlation id is required for each email.'),
             'emails.*.recipient_email.required' => __('A recipient email address is required.'),
         ];
     }
