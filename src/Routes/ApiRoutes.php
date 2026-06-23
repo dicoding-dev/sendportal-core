@@ -40,6 +40,7 @@ class ApiRoutes
                 $apiRouter->apiResource('templates', 'TemplatesController');
 
                 $apiRouter->post('emails/send', 'EmailController@send')->name('emails.send');
+                $apiRouter->post('emails/send-bulk', 'EmailController@sendBulk')->name('emails.send-bulk');
             });
         };
     }
